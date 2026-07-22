@@ -38,12 +38,79 @@ describe('validateHarnessAuditConfig', () => {
       packs: { core: true, extra: './extra-pack.js' },
       checks: { 'CTX-01': { enabled: false }, 'CTX-02': { points: 9 } },
       dimensions: [{ id: 'company', title: 'Company Standards' }],
-      levels: [],
+      levels: [
+        [{ dimension: 'context', minPercent: 40 }],
+        [{ dimension: 'context', minPercent: 60 }, { anyOf: [{ dimension: 'skills', minPercent: 30 }] }],
+        [{ dimension: 'sensors', minPercent: 60 }],
+        [{ totalMinPercent: 80 }],
+      ],
       extraRoots: [{ id: 'shared', path: '../shared' }],
       scopes: { user: true, system: false },
       gate: 'effective',
     };
     expect(validateHarnessAuditConfig(raw)).toEqual(raw);
+  });
+});
+
+describe('validateHarnessAuditConfig — "levels" (maturity-ladder override)', () => {
+  it('rejects a "levels" array that does not have exactly 4 entries', () => {
+    expect(() => validateHarnessAuditConfig({ levels: [[{ dimension: 'context', minPercent: 40 }]] })).toThrow(
+      /"levels" must have exactly 4 entries.*found 1/,
+    );
+  });
+
+  it('rejects a "levels" entry that is not an array', () => {
+    expect(() =>
+      validateHarnessAuditConfig({
+        levels: [{ dimension: 'context', minPercent: 40 }, [], [], []],
+      }),
+    ).toThrow(/"levels\[0\]" must be an array of requirement specs/);
+  });
+
+  it('rejects a spec object matching none of the 3 shapes', () => {
+    expect(() =>
+      validateHarnessAuditConfig({ levels: [[{ nonsense: true }], [], [], []] }),
+    ).toThrow(/"levels\[0\]\[0\]" must match exactly one shape/);
+  });
+
+  it('rejects an "anyOf" entry with a non-array value', () => {
+    expect(() =>
+      validateHarnessAuditConfig({ levels: [[{ anyOf: 'nope' }], [], [], []] }),
+    ).toThrow(/"levels\[0\]\[0\]"\.anyOf must be a non-empty array/);
+  });
+
+  it('rejects a "dimension" shape spec with a non-number "minPercent"', () => {
+    expect(() =>
+      validateHarnessAuditConfig({ levels: [[{ dimension: 'context', minPercent: '40' }], [], [], []] }),
+    ).toThrow(/"levels\[0\]\[0\]" of shape \{ dimension, minPercent \}/);
+  });
+
+  it('rejects a "totalMinPercent" shape spec with a non-number value', () => {
+    expect(() =>
+      validateHarnessAuditConfig({ levels: [[{ totalMinPercent: 'lots' }], [], [], []] }),
+    ).toThrow(/"levels\[0\]\[0\]"\.totalMinPercent must be a number/);
+  });
+
+  it('rejects a spec matching more than one shape at once', () => {
+    expect(() =>
+      validateHarnessAuditConfig({
+        levels: [[{ dimension: 'context', minPercent: 40, totalMinPercent: 80 }], [], [], []],
+      }),
+    ).toThrow(/"levels\[0\]\[0\]" must match exactly one shape/);
+  });
+
+  it('accepts DEFAULT_LEVEL_REQUIREMENTS-shaped levels', () => {
+    const levels = [
+      [{ dimension: 'context', minPercent: 40 }],
+      [
+        { dimension: 'context', minPercent: 60 },
+        { anyOf: [{ dimension: 'skills', minPercent: 30 }, { dimension: 'hooks', minPercent: 30 }] },
+        { dimension: 'hygiene', minPercent: 50 },
+      ],
+      [{ dimension: 'sensors', minPercent: 60 }, { dimension: 'ci', minPercent: 50 }],
+      [{ dimension: 'hooks', minPercent: 70 }, { totalMinPercent: 80 }],
+    ];
+    expect(validateHarnessAuditConfig({ levels })).toEqual({ levels });
   });
 });
 

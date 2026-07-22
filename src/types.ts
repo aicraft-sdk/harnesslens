@@ -106,6 +106,18 @@ export interface LevelInfo {
   nextLevelGaps: string[];
 }
 
+/**
+ * JSON-serializable maturity-ladder requirement, config-overridable via
+ * `.harness-audit.json`'s `levels` key (validated in `config.ts`,
+ * interpreted in `level-requirements.ts`). A level is reached when every
+ * spec in its array is met (AND-combined) — same semantics as the ladder
+ * this replaces.
+ */
+export type LevelRequirementSpec =
+  | { dimension: string; minPercent: number }
+  | { anyOf: Array<{ dimension: string; minPercent: number }> }
+  | { totalMinPercent: number };
+
 /** One scored snapshot (maturity or effective). */
 export interface ScoreSnapshot {
   level: LevelInfo;

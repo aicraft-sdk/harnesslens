@@ -11,10 +11,16 @@
  *  - `ResolvedScanConfig`/`GateMode` come from `./scan-config.js` instead of
  *    upstream's `config.ts` (the full `.harness-audit.json` loader lives in
  *    `./config.js`).
+ *  - The maturity ladder now lives in `./level-requirements.js` as
+ *    config-overridable `LevelRequirementSpec[][]` data (see
+ *    `DEFAULT_LEVEL_REQUIREMENTS`) instead of a hardcoded closure ladder.
+ *    Every report-building entry point defaults its `requirements` parameter
+ *    to `DEFAULT_LEVEL_REQUIREMENTS`, so existing callers are unaffected.
  */
 
 import { detectHarnesses } from './harness/index.js';
 import { buildOverlays } from './harness/global-paths.js';
+import { computeLevel, DEFAULT_LEVEL_REQUIREMENTS } from './level-requirements.js';
 import { corePack } from './packs/core/index.js';
 import { composeRegistry, type ComposedRegistry } from './registry.js';
 import { createScanContext } from './scan.js';
@@ -23,19 +29,19 @@ import type {
   Check,
   CheckOutcome,
   CheckResult,
-  DimensionId,
   DimensionInfo,
   DimensionScore,
-  LevelInfo,
+  LevelRequirementSpec,
   Report,
   ScanContext,
   ScoreSnapshot,
 } from './types.js';
 
+export { LEVEL_NAMES, LEVEL_REQUIREMENTS, DEFAULT_LEVEL_REQUIREMENTS } from './level-requirements.js';
+export type { LevelRequirementSpec } from './types.js';
+
 export const DOCS_BASE_URL = 'https://paladini.github.io/harness-score/guide/measure-and-improve';
 export const TOOL_VERSION = '1.3.1';
-
-export const LEVEL_NAMES = ['Unharnessed', 'Documented', 'Guided', 'Sensing', 'Self-correcting'] as const;
 
 /** Default composition: the `core` pack only, no overrides — Phase 1's exact behavior. */
 export const DEFAULT_REGISTRY: ComposedRegistry = composeRegistry({ packs: [corePack] });
@@ -77,62 +83,18 @@ function scoreDimensions(checks: CheckResult[], dimensions: DimensionInfo[]): Di
   });
 }
 
-interface Requirement {
-  label: string;
-  met(dims: Map<DimensionId, DimensionScore>, totalPercent: number): boolean;
-}
-
-const dimAtLeast = (id: DimensionId, pct: number): Requirement => ({
-  label: `${id} ≥ ${pct}%`,
-  met: (dims) => (dims.get(id)?.percent ?? 0) >= pct,
-});
-
-/**
- * The maturity ladder. A level is reached when ALL of its requirements
- * (and every previous level's) are met. Mirrored verbatim in the guide's
- * Maturity Model chapter — change both together.
- */
-export const LEVEL_REQUIREMENTS: Requirement[][] = [
-  /* L1 Documented */ [dimAtLeast('context', 40)],
-  /* L2 Guided */ [
-    dimAtLeast('context', 60),
-    {
-      label: 'skills ≥ 30% or hooks ≥ 30%',
-      met: (dims) => (dims.get('skills')?.percent ?? 0) >= 30 || (dims.get('hooks')?.percent ?? 0) >= 30,
-    },
-    dimAtLeast('hygiene', 50),
-  ],
-  /* L3 Sensing */ [dimAtLeast('sensors', 60), dimAtLeast('ci', 50)],
-  /* L4 Self-correcting */ [
-    dimAtLeast('hooks', 70),
-    { label: 'total ≥ 80%', met: (_dims, total) => total >= 80 },
-  ],
-];
-
-function computeLevel(dimensions: DimensionScore[], totalPercent: number): LevelInfo {
-  const dims = new Map<DimensionId, DimensionScore>(dimensions.map((d) => [d.id, d]));
-  let index = 0;
-  let gaps: string[] = [];
-  for (let level = 0; level < LEVEL_REQUIREMENTS.length; level += 1) {
-    const unmet = LEVEL_REQUIREMENTS[level]!.filter((r) => !r.met(dims, totalPercent));
-    if (unmet.length === 0) {
-      index = level + 1;
-    } else {
-      gaps = unmet.map((r) => r.label);
-      break;
-    }
-  }
-  return { index, name: LEVEL_NAMES[index]!, nextLevelGaps: gaps };
-}
-
-function buildSnapshot(ctx: ScanContext, registry: ComposedRegistry): ScoreSnapshot {
+function buildSnapshot(
+  ctx: ScanContext,
+  registry: ComposedRegistry,
+  requirements: LevelRequirementSpec[][],
+): ScoreSnapshot {
   const checks = runChecks(ctx, registry.checks);
   const dimensions = scoreDimensions(checks, registry.dimensions);
   const earned = checks.reduce((sum, c) => sum + c.earned, 0);
   const max = checks.reduce((sum, c) => sum + c.points, 0);
   const percent = max === 0 ? 0 : Math.round((earned / max) * 100);
   return {
-    level: computeLevel(dimensions, percent),
+    level: computeLevel(dimensions, percent, requirements),
     score: { earned, max, percent },
     dimensions,
     checks,
@@ -155,11 +117,12 @@ export function buildReportFromContext(
   config: ResolvedScanConfig,
   resolvedRoots: Report['resolvedRoots'],
   registry: ComposedRegistry = DEFAULT_REGISTRY,
+  requirements: LevelRequirementSpec[][] = DEFAULT_LEVEL_REQUIREMENTS,
 ): Report {
-  const maturity = buildSnapshot(maturityCtx, registry);
+  const maturity = buildSnapshot(maturityCtx, registry, requirements);
   let effective = maturity;
   if (effectiveCtx !== maturityCtx) {
-    const effSnapshot = buildSnapshot(effectiveCtx, registry);
+    const effSnapshot = buildSnapshot(effectiveCtx, registry, requirements);
     if (!snapshotsEqual(maturity, effSnapshot)) {
       effective = effSnapshot;
     }
@@ -186,6 +149,7 @@ export function buildReport(
   rootInput: string,
   config?: ResolvedScanConfig,
   registry: ComposedRegistry = DEFAULT_REGISTRY,
+  requirements: LevelRequirementSpec[][] = DEFAULT_LEVEL_REQUIREMENTS,
 ): Report {
   const root = rootInput;
   const resolved = config ?? DEFAULT_SCAN_CONFIG;
@@ -194,18 +158,19 @@ export function buildReport(
   const hasExtraScopes = resolved.scopes.user || resolved.scopes.system || resolved.extraRoots.length > 0;
 
   if (!hasExtraScopes) {
-    return buildReportFromContext(maturityCtx, maturityCtx, resolved, undefined, registry);
+    return buildReportFromContext(maturityCtx, maturityCtx, resolved, undefined, registry, requirements);
   }
 
   const { overlays, resolvedRoots } = buildOverlays(root, resolved.scopes, resolved.extraRoots);
   const effectiveCtx = createScanContext(root, { overlays });
-  return buildReportFromContext(maturityCtx, effectiveCtx, resolved, resolvedRoots, registry);
+  return buildReportFromContext(maturityCtx, effectiveCtx, resolved, resolvedRoots, registry, requirements);
 }
 
 /** Build a report from a pre-built ScanContext using the default (repo-only, maturity-gated) config. */
 export function buildReportFromScanContext(
   ctx: ScanContext,
   registry: ComposedRegistry = DEFAULT_REGISTRY,
+  requirements: LevelRequirementSpec[][] = DEFAULT_LEVEL_REQUIREMENTS,
 ): Report {
-  return buildReportFromContext(ctx, ctx, DEFAULT_SCAN_CONFIG, undefined, registry);
+  return buildReportFromContext(ctx, ctx, DEFAULT_SCAN_CONFIG, undefined, registry, requirements);
 }

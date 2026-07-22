@@ -13,7 +13,7 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { CheckPack, DimensionInfo } from './types.js';
+import type { CheckPack, DimensionInfo, LevelRequirementSpec } from './types.js';
 import { DEFAULT_SCAN_CONFIG, type ExtraRootEntry, type GateMode, type ResolvedScanConfig } from './scan-config.js';
 
 export const CONFIG_FILE_NAME = '.harness-audit.json';
@@ -28,8 +28,12 @@ export interface HarnessAuditConfig {
   packs?: Record<string, boolean | string | CheckPack>;
   checks?: Record<string, CheckOverrideEntry>;
   dimensions?: DimensionInfo[];
-  /** Reserved for a future maturity-ladder override mechanism; accepted but not yet interpreted. */
-  levels?: unknown[];
+  /**
+   * Maturity-ladder override: exactly 4 entries (L1-L4, same order as
+   * `DEFAULT_LEVEL_REQUIREMENTS`), each an AND-combined array of
+   * `LevelRequirementSpec`. Interpreted by `computeLevel` (`level-requirements.ts`).
+   */
+  levels?: LevelRequirementSpec[][];
   extraRoots?: ExtraRootEntry[];
   scopes?: { user?: boolean; system?: boolean };
   gate?: GateMode;
@@ -106,9 +110,65 @@ function validateGate(value: unknown): void {
   }
 }
 
+const LEVEL_COUNT = 4;
+
+/** A `levels[i][j]` entry must match exactly one of these 3 shapes. */
+function validateLevelRequirementSpec(value: unknown, levelIndex: number, specIndex: number): void {
+  const where = `"levels[${levelIndex}][${specIndex}]"`;
+  if (!isPlainObject(value)) {
+    fail(`${where} must be an object matching one of: { dimension, minPercent }, { anyOf }, or { totalMinPercent }.`);
+  }
+
+  const hasDimensionShape = 'dimension' in value || 'minPercent' in value;
+  const hasAnyOfShape = 'anyOf' in value;
+  const hasTotalShape = 'totalMinPercent' in value;
+  const shapeCount = [hasDimensionShape, hasAnyOfShape, hasTotalShape].filter(Boolean).length;
+
+  if (shapeCount !== 1) {
+    fail(
+      `${where} must match exactly one shape: { dimension, minPercent }, { anyOf }, or { totalMinPercent } (found keys matching ${shapeCount} shapes).`,
+    );
+  }
+
+  if (hasDimensionShape) {
+    if (typeof value.dimension !== 'string' || typeof value.minPercent !== 'number') {
+      fail(`${where} of shape { dimension, minPercent } must have a string "dimension" and a number "minPercent".`);
+    }
+    return;
+  }
+
+  if (hasAnyOfShape) {
+    if (!Array.isArray(value.anyOf) || value.anyOf.length === 0) {
+      fail(`${where}.anyOf must be a non-empty array of { dimension, minPercent }.`);
+    }
+    for (const [entryIndex, entry] of value.anyOf.entries()) {
+      if (!isPlainObject(entry) || typeof entry.dimension !== 'string' || typeof entry.minPercent !== 'number') {
+        fail(`${where}.anyOf[${entryIndex}] must be an object with a string "dimension" and a number "minPercent".`);
+      }
+    }
+    return;
+  }
+
+  // hasTotalShape
+  if (typeof value.totalMinPercent !== 'number') {
+    fail(`${where}.totalMinPercent must be a number.`);
+  }
+}
+
 function validateLevels(value: unknown): void {
   if (value === undefined) return;
   if (!Array.isArray(value)) fail('"levels" must be an array.');
+  if (value.length !== LEVEL_COUNT) {
+    fail(`"levels" must have exactly ${LEVEL_COUNT} entries (one per maturity level L1-L4), found ${value.length}.`);
+  }
+  for (const [levelIndex, levelEntry] of value.entries()) {
+    if (!Array.isArray(levelEntry)) {
+      fail(`"levels[${levelIndex}]" must be an array of requirement specs.`);
+    }
+    for (const [specIndex, spec] of levelEntry.entries()) {
+      validateLevelRequirementSpec(spec, levelIndex, specIndex);
+    }
+  }
 }
 
 /** Validate a parsed `.harness-audit.json` object; throws with a clear message on the first problem found. */

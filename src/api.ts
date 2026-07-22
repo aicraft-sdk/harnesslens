@@ -83,10 +83,10 @@ export async function runAudit(options: RunAuditOptions): Promise<Report> {
     scanConfig.scopes.user || scanConfig.scopes.system || scanConfig.extraRoots.length > 0;
 
   if (!hasExtraScopes) {
-    return buildReportFromContext(maturityCtx, maturityCtx, scanConfig, undefined, registry);
+    return buildReportFromContext(maturityCtx, maturityCtx, scanConfig, undefined, registry, config.levels);
   }
 
   const { overlays, resolvedRoots } = buildOverlays(root, scanConfig.scopes, scanConfig.extraRoots);
   const effectiveCtx = createScanContext(root, { overlays });
-  return buildReportFromContext(maturityCtx, effectiveCtx, scanConfig, resolvedRoots, registry);
+  return buildReportFromContext(maturityCtx, effectiveCtx, scanConfig, resolvedRoots, registry, config.levels);
 }
