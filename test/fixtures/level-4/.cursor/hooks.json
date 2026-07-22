@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "node ./.cursor/hooks/guard-shell.js",
+        "timeout": 10
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node ./.cursor/hooks/format-on-edit.js",
+        "timeout": 30
+      }
+    ]
+  }
+}

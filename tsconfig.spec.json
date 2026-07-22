@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc/packages/harness-audit",
+    "types": ["vitest/globals", "vitest/importMeta", "vite/client", "node", "vitest"],
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": false,
+    "noPropertyAccessFromIndexSignature": false
+  },
+  "include": [
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "vite.config.ts"
+  ]
+}

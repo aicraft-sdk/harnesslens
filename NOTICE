@@ -1,0 +1,26 @@
+@ai-craft/harness-audit
+
+Portions of this package (the scoring engine types, scanner, scorer, report
+renderers, the 36 `core` check pack checks, and the harness-detection support
+modules) are ported from harness-score:
+
+  https://github.com/paladini/harness-score
+  Copyright (c) 2026 Fernando Paladini
+  MIT License
+
+The full upstream license text is included at
+THIRD_PARTY_LICENSES/harness-score-LICENSE.
+
+Trivial, contract-preserving differences from upstream (naming/module
+boundaries only — check pass/fail semantics are unchanged):
+  - The check catalog is organized as a `core` check pack
+    (`{ id: 'core', checks: Check[] }`) rather than a flat `ALL_CHECKS` array,
+    to make room for the pack/config extension layer planned for a later
+    phase.
+  - `GateMode` / `ResolvedScanConfig` / `ExtraRootEntry` live in a local
+    `scan-config.ts` (types + a default only) instead of upstream's
+    `config.ts`, since the `.harness-audit.json` file-driven config loader is
+    a later phase, not this port.
+  - The terminal/Markdown report renderers omit upstream's baseline-diff
+    section (`ReportDiff` / `diff.ts`) — a CLI-only concern out of scope for
+    this package's programmatic core engine.

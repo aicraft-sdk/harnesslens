@@ -1,0 +1,26 @@
+{
+  "name": "@ai-craft/harness-audit",
+  "version": "0.0.1",
+  "description": "Extensible AI-harness maturity scorer for auditing company repos",
+  "type": "module",
+  "main": "./index.js",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "**/*"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {}
+}
