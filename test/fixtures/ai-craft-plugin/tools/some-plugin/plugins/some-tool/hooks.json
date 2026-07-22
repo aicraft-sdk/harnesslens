@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "*", "hooks": [{ "type": "command", "command": "echo pre" }] }
+    ]
+  }
+}

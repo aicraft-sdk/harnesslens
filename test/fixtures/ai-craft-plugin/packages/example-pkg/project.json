@@ -1,0 +1,5 @@
+{
+  "name": "example-pkg",
+  "sourceRoot": "packages/example-pkg/src",
+  "projectType": "library"
+}

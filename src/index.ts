@@ -1,6 +1,9 @@
 // Public API — Phase 1: ported core scoring engine + `core` check pack.
-// Config-driven pack composition, the `ai-craft` company pack, CLI, and the
-// multi-repo runner are later phases (see docs/ai/specs/0011-harness-audit.md).
+// Phase 2: config-driven pack composition (`composeRegistry`, `runAudit`).
+// Phase 3: the `ai-craft` company check pack (craftflow-plugin detection,
+// NX/changesets/governance/spec-traceability, hygiene templates).
+// CLI + GitHub Action + multi-repo runner remain a later phase
+// (see docs/ai/specs/0011-harness-audit.md).
 
 export type {
   Check,
@@ -49,6 +52,8 @@ export {
 } from './score.js';
 
 export { ALL_CHECKS, corePack } from './packs/core/index.js';
+
+export { AI_CRAFT_CHECKS, aiCraftPack, COMPANY_DIMENSION } from './packs/ai-craft/index.js';
 
 export type { RunAuditOptions } from './api.js';
 export { runAudit } from './api.js';
