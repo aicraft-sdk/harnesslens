@@ -10,7 +10,12 @@
  */
 
 import { buildOverlays } from './harness/global-paths.js';
-import { loadHarnessAuditConfigFile, resolveScanConfig, type HarnessAuditConfig } from './config.js';
+import {
+  loadHarnessAuditConfigFile,
+  resolveScanConfig,
+  validateHarnessAuditConfig,
+  type HarnessAuditConfig,
+} from './config.js';
 import { corePack } from './packs/core/index.js';
 import { composeRegistry, type CheckOverride } from './registry.js';
 import { createScanContext } from './scan.js';
@@ -64,7 +69,9 @@ async function resolvePacks(config: HarnessAuditConfig): Promise<CheckPack[]> {
 /** Build a full `Report` for `root`, resolving config from the explicit param, `.harness-audit.json`, or defaults. */
 export async function runAudit(options: RunAuditOptions): Promise<Report> {
   const { root } = options;
-  const config = options.config ?? loadHarnessAuditConfigFile(root) ?? {};
+  const config = options.config
+    ? validateHarnessAuditConfig(options.config)
+    : (loadHarnessAuditConfigFile(root) ?? {});
 
   const packs = await resolvePacks(config);
   const checkOverrides: Record<string, CheckOverride> = {};

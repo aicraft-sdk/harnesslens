@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runAudit } from './api.js';
+import type { HarnessAuditConfig } from './config.js';
 import { DEFAULT_LEVEL_REQUIREMENTS, buildReportFromScanContext } from './score.js';
 import { createScanContext } from './scan.js';
 import type { Check, CheckPack } from './types.js';
@@ -212,5 +213,100 @@ describe('runAudit — "levels" config override', () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('runAudit — programmatic "config" validation parity', () => {
+  it('rejects a directly-passed "levels" config with only 2 entries', async () => {
+    const root = path.join(FIXTURES_ROOT, 'level-4');
+
+    await expect(
+      runAudit({
+        root,
+        config: {
+          levels: [
+            [{ dimension: 'context', minPercent: 40 }],
+            [{ dimension: 'context', minPercent: 60 }],
+          ],
+        },
+      }),
+    ).rejects.toThrow(/"levels" must have exactly 4 entries/);
+  });
+
+  it('rejects a directly-passed "levels" config with 5 entries', async () => {
+    const root = path.join(FIXTURES_ROOT, 'level-4');
+    const five = [
+      DEFAULT_LEVEL_REQUIREMENTS[0]!,
+      DEFAULT_LEVEL_REQUIREMENTS[1]!,
+      DEFAULT_LEVEL_REQUIREMENTS[2]!,
+      DEFAULT_LEVEL_REQUIREMENTS[3]!,
+      DEFAULT_LEVEL_REQUIREMENTS[3]!,
+    ];
+
+    await expect(runAudit({ root, config: { levels: five } })).rejects.toThrow(
+      /"levels" must have exactly 4 entries/,
+    );
+  });
+
+  it('still succeeds with the CLI default-shaped config ({ packs: { core: true, "ai-craft": <live CheckPack> } })', async () => {
+    const root = path.join(FIXTURES_ROOT, 'level-4');
+    const aiCraftPack: CheckPack = {
+      id: 'ai-craft',
+      checks: [
+        {
+          id: 'FIX-AC-01',
+          dimension: 'context',
+          title: 'Fixture ai-craft-shaped check',
+          points: 3,
+          remediation: 'n/a',
+          run: () => ({ passed: true, evidence: 'fixture always passes' }),
+        },
+      ],
+    };
+
+    const report = await runAudit({ root, config: { packs: { core: true, 'ai-craft': aiCraftPack } } });
+
+    expect(report.checks.some((c) => c.id === 'FIX-AC-01' && c.passed)).toBe(true);
+  });
+
+  it('still succeeds with an external pack passed as a live CheckPack object in "packs"', async () => {
+    const root = path.join(FIXTURES_ROOT, 'level-4');
+    const externalPack: CheckPack = {
+      id: 'external-fixture',
+      checks: [
+        {
+          id: 'EXT-VALIDATION-01',
+          dimension: 'context',
+          title: 'Fixture external check (always passes)',
+          points: 4,
+          remediation: 'n/a',
+          run: () => ({ passed: true, evidence: 'fixture always passes' }),
+        },
+      ],
+    };
+
+    const report = await runAudit({
+      root,
+      config: { packs: { core: false, 'my-external': externalPack } },
+    });
+
+    expect(report.checks).toHaveLength(1);
+    expect(report.checks[0]).toMatchObject({ id: 'EXT-VALIDATION-01', passed: true, earned: 4, points: 4 });
+  });
+
+  it('rejects a directly-passed config with an unknown top-level key', async () => {
+    const root = path.join(FIXTURES_ROOT, 'level-4');
+
+    await expect(
+      runAudit({ root, config: { notARealKey: true } as unknown as Parameters<typeof runAudit>[0]['config'] }),
+    ).rejects.toThrow(/unknown top-level key "notARealKey"/);
+  });
+
+  it('rejects a directly-passed config with an invalid "gate" value', async () => {
+    const root = path.join(FIXTURES_ROOT, 'level-4');
+
+    await expect(
+      runAudit({ root, config: { gate: 'bogus' as unknown as HarnessAuditConfig['gate'] } }),
+    ).rejects.toThrow(/"gate" must be "maturity" or "effective"/);
   });
 });
