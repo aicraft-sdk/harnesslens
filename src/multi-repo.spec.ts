@@ -20,8 +20,8 @@ describe('runMultiRepoAudit — aggregate over 2+ repos', () => {
     expect(result.results).toHaveLength(2);
     expect(result.results[0]).toMatchObject({ id: 'repo-zero', path: LEVEL_0_FIXTURE });
     expect(result.results[1]).toMatchObject({ id: 'repo-four', path: LEVEL_4_FIXTURE });
-    expect(result.results[0]!.report.level.index).toBe(0);
-    expect(result.results[1]!.report.level.index).toBe(4);
+    expect(result.results[0]!.report!.level.index).toBe(0);
+    expect(result.results[1]!.report!.level.index).toBe(4);
 
     expect(result.rollup.repoCount).toBe(2);
     expect(result.rollup.averageLevelIndex).toBe(2);
@@ -32,6 +32,53 @@ describe('runMultiRepoAudit — aggregate over 2+ repos', () => {
   it('produces byte-identical JSON output across two separate invocations (determinism)', async () => {
     const entries = [
       { id: 'repo-zero', path: LEVEL_0_FIXTURE },
+      { id: 'repo-four', path: LEVEL_4_FIXTURE },
+    ];
+
+    const first = await runMultiRepoAudit(entries);
+    const second = await runMultiRepoAudit(entries);
+
+    expect(JSON.stringify(first)).toBe(JSON.stringify(second));
+  });
+});
+
+describe('runMultiRepoAudit — per-repo failure isolation', () => {
+  const BAD_PATH = path.join(FIXTURES_ROOT, 'this-repo-does-not-exist');
+
+  it('isolates one bad entry from the rest — good repos still report, bad one reports a failure, function does not reject', async () => {
+    const result = await runMultiRepoAudit([
+      { id: 'repo-zero', path: LEVEL_0_FIXTURE },
+      { id: 'repo-bad', path: BAD_PATH },
+      { id: 'repo-four', path: LEVEL_4_FIXTURE },
+    ]);
+
+    expect(result.results).toHaveLength(3);
+
+    const zero = result.results[0]!;
+    expect(zero.id).toBe('repo-zero');
+    expect(zero.report).not.toBeNull();
+    expect(zero.report!.level.index).toBe(0);
+
+    const bad = result.results[1]!;
+    expect(bad.id).toBe('repo-bad');
+    expect(bad.report).toBeNull();
+    expect(bad.error).toMatch(/repository root not found or not readable/);
+
+    const four = result.results[2]!;
+    expect(four.id).toBe('repo-four');
+    expect(four.report).not.toBeNull();
+    expect(four.report!.level.index).toBe(4);
+
+    // The failed entry must not corrupt the average — only successes count.
+    expect(result.rollup.repoCount).toBe(2);
+    expect(result.rollup.averageLevelIndex).toBe(2);
+    expect(result.rollup.failedCount).toBe(1);
+  });
+
+  it('produces byte-identical JSON output across two runs of a mixed good/bad fleet (determinism)', async () => {
+    const entries = [
+      { id: 'repo-zero', path: LEVEL_0_FIXTURE },
+      { id: 'repo-bad', path: BAD_PATH },
       { id: 'repo-four', path: LEVEL_4_FIXTURE },
     ];
 

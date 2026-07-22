@@ -25,17 +25,25 @@ export interface RepoEntry {
   path: string;
 }
 
+/**
+ * `report` is `null` when this repo's audit failed — `error` then carries the
+ * failure reason. Exactly one of `report`/`error` is meaningful per entry.
+ */
 export interface RepoAuditResult {
   id: string;
   path: string;
-  report: Report;
+  report: Report | null;
+  error?: string;
 }
 
 export interface MultiRepoRollup {
+  /** Count of SUCCESSFUL audits only — failed entries are excluded from every average below. */
   repoCount: number;
   averageScorePercent: number;
   averageLevelIndex: number;
   levelCounts: Record<string, number>;
+  /** Count of repos whose audit threw — see each entry's `error` in `results` for why. */
+  failedCount: number;
 }
 
 export interface MultiRepoReport {
@@ -48,14 +56,18 @@ function computeRollup(results: RepoAuditResult[]): MultiRepoRollup {
   const levelCounts: Record<string, number> = {};
   for (const name of LEVEL_NAMES) levelCounts[name] = 0;
 
-  const repoCount = results.length;
+  const successes = results.filter(
+    (r): r is RepoAuditResult & { report: Report } => r.report !== null,
+  );
+  const failedCount = results.length - successes.length;
+  const repoCount = successes.length;
   if (repoCount === 0) {
-    return { repoCount: 0, averageScorePercent: 0, averageLevelIndex: 0, levelCounts };
+    return { repoCount: 0, averageScorePercent: 0, averageLevelIndex: 0, levelCounts, failedCount };
   }
 
   let scoreSum = 0;
   let levelSum = 0;
-  for (const { report } of results) {
+  for (const { report } of successes) {
     scoreSum += report.score.percent;
     levelSum += report.level.index;
     levelCounts[report.level.name] = (levelCounts[report.level.name] ?? 0) + 1;
@@ -66,20 +78,33 @@ function computeRollup(results: RepoAuditResult[]): MultiRepoRollup {
     averageScorePercent: Math.round((scoreSum / repoCount) * 100) / 100,
     averageLevelIndex: Math.round((levelSum / repoCount) * 100) / 100,
     levelCounts,
+    failedCount,
   };
 }
 
-/** Audit each repo entry (in parallel — pure local fs scanning, no rate limits to worry about) and aggregate a rollup. */
+/**
+ * Audit each repo entry (in parallel — pure local fs scanning, no rate limits
+ * to worry about) and aggregate a rollup. Uses `Promise.allSettled` (not
+ * `Promise.all`) so that one bad entry (bad path, malformed
+ * `.harness-audit.json`, a failed pack import, etc.) reports as a per-entry
+ * failure instead of aborting the whole fleet scan — mirroring `score.ts`'s
+ * `runChecks`, which already isolates failures at the individual-check level.
+ */
 export async function runMultiRepoAudit(entries: RepoEntry[]): Promise<MultiRepoReport> {
-  const results = await Promise.all(
-    entries.map(
-      async (entry): Promise<RepoAuditResult> => ({
-        id: entry.id,
-        path: entry.path,
-        report: await runAudit({ root: entry.path }),
-      }),
-    ),
-  );
+  const settled = await Promise.allSettled(entries.map((entry) => runAudit({ root: entry.path })));
+
+  const results: RepoAuditResult[] = settled.map((outcome, i) => {
+    const entry = entries[i]!;
+    if (outcome.status === 'fulfilled') {
+      return { id: entry.id, path: entry.path, report: outcome.value };
+    }
+    return {
+      id: entry.id,
+      path: entry.path,
+      report: null,
+      error: outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+    };
+  });
 
   return {
     tool: { name: 'harness-audit', version: TOOL_VERSION },

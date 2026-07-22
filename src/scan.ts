@@ -66,6 +66,25 @@ function safeRealpath(p: string): string | null {
   }
 }
 
+/**
+ * Distinguishes "the root itself could not be read at all" (nonexistent path,
+ * moved/renamed repo, permission denied) from a genuinely empty-but-readable
+ * repo. `walk()`'s own per-directory `catch { continue }` is reserved for
+ * subdirectories encountered mid-walk — a different, already-correct case —
+ * so this check must happen once, up front, before `walk(root)` is called.
+ */
+function assertReadableRoot(root: string): void {
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(root);
+  } catch {
+    throw new Error(`harness-audit: repository root not found or not readable: ${root}`);
+  }
+  if (!stat.isDirectory()) {
+    throw new Error(`harness-audit: repository root not found or not readable: ${root}`);
+  }
+}
+
 function walk(root: string): { files: string[]; truncated: boolean } {
   const files: string[] = [];
   let truncated = false;
@@ -179,6 +198,7 @@ function buildContext(
 
 export function createScanContext(rootInput: string, options: CreateScanOptions = {}): ScanContext {
   const root = path.resolve(rootInput);
+  assertReadableRoot(root);
   const { files: repoFiles, truncated: repoTruncated } = walk(root);
   const overlays = options.overlays ?? [];
 

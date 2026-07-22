@@ -188,13 +188,20 @@ function renderMultiRepoTable(result: MultiRepoReport): string {
   lines.push('');
   lines.push(`  harness-audit multi — ${result.results.length} repo(s)`);
   lines.push('');
-  for (const { id, path: repoPath, report } of result.results) {
-    lines.push(`  ${id.padEnd(24)} L${report.level.index} · ${report.level.name}`.padEnd(56) + `  ${report.score.percent}%  ${repoPath}`);
+  for (const { id, path: repoPath, report, error } of result.results) {
+    if (report === null) {
+      lines.push(`  ${id.padEnd(24)} FAILED: ${error}`.padEnd(56) + `  ${repoPath}`);
+    } else {
+      lines.push(`  ${id.padEnd(24)} L${report.level.index} · ${report.level.name}`.padEnd(56) + `  ${report.score.percent}%  ${repoPath}`);
+    }
   }
   lines.push('');
   lines.push(
     `  Average: L${result.rollup.averageLevelIndex}   Score: ${result.rollup.averageScorePercent}%   (${result.rollup.repoCount} repos)`,
   );
+  if (result.rollup.failedCount > 0) {
+    lines.push(`  Failed: ${result.rollup.failedCount}`);
+  }
   lines.push('');
   return lines.join('\n');
 }
@@ -221,7 +228,10 @@ async function runMultiCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> 
   }
 
   if (args.minLevel !== undefined) {
-    const anyBelow = result.results.some((r) => r.report.level.index < (args.minLevel as number));
+    // A failed repo (report === null) can't be confirmed to meet the gate — treat it as below minLevel.
+    const anyBelow = result.results.some(
+      (r) => r.report === null || r.report.level.index < (args.minLevel as number),
+    );
     if (anyBelow) return { exitCode: 1 };
   }
   return { exitCode: 0 };
