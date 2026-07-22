@@ -2,14 +2,17 @@
  * The `core` check pack — the 36 checks ported from harness-score
  * (https://github.com/paladini/harness-score, MIT — see NOTICE), reorganized
  * one file per dimension (mirroring upstream's `checks/{context,skills,...}.ts`
- * layout) and assembled here into a single `CheckPack`-shaped object.
+ * layout) and assembled here into a single `CheckPack`-shaped object via
+ * `definePack`/`defineCheck` (see `../../define.js`).
  *
- * Phase 1 wiring: `ALL_CHECKS = corePack.checks` is the only pack in use.
- * Phase 2 replaces this with config-driven pack composition (multiple packs,
- * enable/disable/reweight by id) — not built here.
+ * Phase 2: this is now one of potentially many packs the registry
+ * (`../../registry.js`) composes — `ALL_CHECKS` is kept only as a
+ * backward-compatible alias for `corePack.checks` (still used directly by
+ * `score.ts`'s `DEFAULT_REGISTRY`).
  */
 
-import type { Check } from '../../types.js';
+import { defineCheck, definePack } from '../../define.js';
+import type { Check, CheckPack } from '../../types.js';
 import { agentChecks } from './agents.js';
 import { ciChecks } from './ci.js';
 import { contextChecks } from './context.js';
@@ -18,12 +21,7 @@ import { hygieneChecks } from './hygiene.js';
 import { sensorChecks } from './sensors.js';
 import { skillChecks } from './skills.js';
 
-export interface CheckPack {
-  id: string;
-  checks: Check[];
-}
-
-export const corePack: CheckPack = {
+export const corePack: CheckPack = definePack({
   id: 'core',
   checks: [
     ...contextChecks,
@@ -33,10 +31,10 @@ export const corePack: CheckPack = {
     ...sensorChecks,
     ...ciChecks,
     ...hygieneChecks,
-  ],
-};
+  ].map(defineCheck),
+});
 
-/** Phase 1 hardcoded wiring — Phase 2 replaces this with pack composition from config. */
+/** Backward-compatible alias for `corePack.checks` — the flat list of the 36 core checks. */
 export const ALL_CHECKS: Check[] = corePack.checks;
 
 export { agentChecks, ciChecks, contextChecks, hookChecks, hygieneChecks, sensorChecks, skillChecks };

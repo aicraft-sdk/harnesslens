@@ -5,7 +5,9 @@
 export type {
   Check,
   CheckOutcome,
+  CheckPack,
   CheckResult,
+  CoreDimensionId,
   DimensionId,
   DimensionInfo,
   DimensionScore,
@@ -16,24 +18,40 @@ export type {
 } from './types.js';
 export { DIMENSIONS } from './types.js';
 
+export { defineCheck, definePack } from './define.js';
+
+export type { CheckOverride, ComposeRegistryOptions, ComposedRegistry } from './registry.js';
+export { composeRegistry } from './registry.js';
+
 export type { CreateScanOptions, ScanOverlay } from './scan.js';
 export { createScanContext } from './scan.js';
 
 export type { ExtraRootEntry, GateMode, ResolvedScanConfig, ScopeFlag } from './scan-config.js';
 export { DEFAULT_SCAN_CONFIG } from './scan-config.js';
 
+export type { CheckOverrideEntry, HarnessAuditConfig } from './config.js';
+export {
+  CONFIG_FILE_NAME,
+  loadHarnessAuditConfigFile,
+  resolveScanConfig,
+  validateHarnessAuditConfig,
+} from './config.js';
+
 export {
   buildReport,
   buildReportFromContext,
   buildReportFromScanContext,
+  DEFAULT_REGISTRY,
   DOCS_BASE_URL,
   LEVEL_NAMES,
   LEVEL_REQUIREMENTS,
   TOOL_VERSION,
 } from './score.js';
 
-export type { CheckPack } from './packs/core/index.js';
 export { ALL_CHECKS, corePack } from './packs/core/index.js';
+
+export type { RunAuditOptions } from './api.js';
+export { runAudit } from './api.js';
 
 export { renderBadge } from './report/badge.js';
 export { renderMarkdown } from './report/markdown.js';

@@ -1,37 +1,47 @@
 /**
  * Ported from harness-score's `score.ts`
  * (https://github.com/paladini/harness-score, MIT — see NOTICE).
- * Differences from upstream (trivial, contract-preserving):
- *  - `ALL_CHECKS` now comes from `./packs/core/index.js` (Phase 1 hardcoded
- *    wiring to the `core` pack) instead of upstream's `checks/index.js`.
+ * Differences from upstream (contract-preserving):
+ *  - Checks and dimensions now come from a `ComposedRegistry` (`./registry.js`)
+ *    instead of a hardcoded `ALL_CHECKS`/`DIMENSIONS` pair — Phase 2 replaces
+ *    Phase 1's `ALL_CHECKS = corePack.checks` wiring with pluggable pack
+ *    composition. Every report-building entry point defaults its `registry`
+ *    parameter to `DEFAULT_REGISTRY` (core pack only, no overrides), so
+ *    existing callers (and `parity.spec.ts`) are unaffected.
  *  - `ResolvedScanConfig`/`GateMode` come from `./scan-config.js` instead of
- *    upstream's `config.ts` (the full `.harness-audit.json` loader is Phase 2).
+ *    upstream's `config.ts` (the full `.harness-audit.json` loader lives in
+ *    `./config.js`).
  */
 
 import { detectHarnesses } from './harness/index.js';
 import { buildOverlays } from './harness/global-paths.js';
-import { ALL_CHECKS } from './packs/core/index.js';
+import { corePack } from './packs/core/index.js';
+import { composeRegistry, type ComposedRegistry } from './registry.js';
 import { createScanContext } from './scan.js';
 import { DEFAULT_SCAN_CONFIG, type ResolvedScanConfig } from './scan-config.js';
 import type {
+  Check,
   CheckOutcome,
   CheckResult,
   DimensionId,
+  DimensionInfo,
   DimensionScore,
   LevelInfo,
   Report,
   ScanContext,
   ScoreSnapshot,
 } from './types.js';
-import { DIMENSIONS } from './types.js';
 
 export const DOCS_BASE_URL = 'https://paladini.github.io/harness-score/guide/measure-and-improve';
 export const TOOL_VERSION = '1.3.1';
 
 export const LEVEL_NAMES = ['Unharnessed', 'Documented', 'Guided', 'Sensing', 'Self-correcting'] as const;
 
-function runChecks(ctx: ScanContext): CheckResult[] {
-  return ALL_CHECKS.map((check) => {
+/** Default composition: the `core` pack only, no overrides — Phase 1's exact behavior. */
+export const DEFAULT_REGISTRY: ComposedRegistry = composeRegistry({ packs: [corePack] });
+
+function runChecks(ctx: ScanContext, checks: Check[]): CheckResult[] {
+  return checks.map((check) => {
     let outcome: CheckOutcome;
     try {
       outcome = check.run(ctx);
@@ -52,8 +62,8 @@ function runChecks(ctx: ScanContext): CheckResult[] {
   });
 }
 
-function scoreDimensions(checks: CheckResult[]): DimensionScore[] {
-  return DIMENSIONS.map((dim) => {
+function scoreDimensions(checks: CheckResult[], dimensions: DimensionInfo[]): DimensionScore[] {
+  return dimensions.map((dim) => {
     const own = checks.filter((c) => c.dimension === dim.id);
     const earned = own.reduce((sum, c) => sum + c.earned, 0);
     const max = own.reduce((sum, c) => sum + c.points, 0);
@@ -115,9 +125,9 @@ function computeLevel(dimensions: DimensionScore[], totalPercent: number): Level
   return { index, name: LEVEL_NAMES[index]!, nextLevelGaps: gaps };
 }
 
-function buildSnapshot(ctx: ScanContext): ScoreSnapshot {
-  const checks = runChecks(ctx);
-  const dimensions = scoreDimensions(checks);
+function buildSnapshot(ctx: ScanContext, registry: ComposedRegistry): ScoreSnapshot {
+  const checks = runChecks(ctx, registry.checks);
+  const dimensions = scoreDimensions(checks, registry.dimensions);
   const earned = checks.reduce((sum, c) => sum + c.earned, 0);
   const max = checks.reduce((sum, c) => sum + c.points, 0);
   const percent = max === 0 ? 0 : Math.round((earned / max) * 100);
@@ -144,11 +154,12 @@ export function buildReportFromContext(
   effectiveCtx: ScanContext,
   config: ResolvedScanConfig,
   resolvedRoots: Report['resolvedRoots'],
+  registry: ComposedRegistry = DEFAULT_REGISTRY,
 ): Report {
-  const maturity = buildSnapshot(maturityCtx);
+  const maturity = buildSnapshot(maturityCtx, registry);
   let effective = maturity;
   if (effectiveCtx !== maturityCtx) {
-    const effSnapshot = buildSnapshot(effectiveCtx);
+    const effSnapshot = buildSnapshot(effectiveCtx, registry);
     if (!snapshotsEqual(maturity, effSnapshot)) {
       effective = effSnapshot;
     }
@@ -171,7 +182,11 @@ export function buildReportFromContext(
 }
 
 /** Build a full report for a repository root with optional scope configuration. */
-export function buildReport(rootInput: string, config?: ResolvedScanConfig): Report {
+export function buildReport(
+  rootInput: string,
+  config?: ResolvedScanConfig,
+  registry: ComposedRegistry = DEFAULT_REGISTRY,
+): Report {
   const root = rootInput;
   const resolved = config ?? DEFAULT_SCAN_CONFIG;
 
@@ -179,15 +194,18 @@ export function buildReport(rootInput: string, config?: ResolvedScanConfig): Rep
   const hasExtraScopes = resolved.scopes.user || resolved.scopes.system || resolved.extraRoots.length > 0;
 
   if (!hasExtraScopes) {
-    return buildReportFromContext(maturityCtx, maturityCtx, resolved, undefined);
+    return buildReportFromContext(maturityCtx, maturityCtx, resolved, undefined, registry);
   }
 
   const { overlays, resolvedRoots } = buildOverlays(root, resolved.scopes, resolved.extraRoots);
   const effectiveCtx = createScanContext(root, { overlays });
-  return buildReportFromContext(maturityCtx, effectiveCtx, resolved, resolvedRoots);
+  return buildReportFromContext(maturityCtx, effectiveCtx, resolved, resolvedRoots, registry);
 }
 
 /** Build a report from a pre-built ScanContext using the default (repo-only, maturity-gated) config. */
-export function buildReportFromScanContext(ctx: ScanContext): Report {
-  return buildReportFromContext(ctx, ctx, DEFAULT_SCAN_CONFIG, undefined);
+export function buildReportFromScanContext(
+  ctx: ScanContext,
+  registry: ComposedRegistry = DEFAULT_REGISTRY,
+): Report {
+  return buildReportFromContext(ctx, ctx, DEFAULT_SCAN_CONFIG, undefined, registry);
 }

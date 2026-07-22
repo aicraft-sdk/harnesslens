@@ -5,7 +5,15 @@
  * than upstream's `config.ts`, since the full config-file loader is Phase 2.
  */
 
-export type DimensionId = 'context' | 'skills' | 'hooks' | 'sensors' | 'ci' | 'hygiene';
+export type CoreDimensionId = 'context' | 'skills' | 'hooks' | 'sensors' | 'ci' | 'hygiene';
+
+/**
+ * The 6 built-in dimension ids retain autocomplete via `CoreDimensionId`, but
+ * packs (Phase 2) may declare arbitrary custom dimension ids (e.g. a company
+ * pack's "company" dimension) — the `(string & {})` branch widens the type
+ * without losing literal-string autocomplete for the known ids.
+ */
+export type DimensionId = CoreDimensionId | (string & {});
 
 export interface DimensionInfo {
   id: DimensionId;
@@ -52,6 +60,21 @@ export interface Check {
   /** One actionable sentence shown when the check fails. */
   remediation: string;
   run(ctx: ScanContext): CheckOutcome;
+}
+
+/**
+ * A composable bundle of checks (and optionally custom dimensions) that the
+ * registry (`registry.ts`) flattens into the check/dimension list `score.ts`
+ * scores. `core` (the 36 ported upstream checks) is the built-in pack;
+ * external packs are added via config (`config.ts`) without forking this
+ * package. `levelRules` is reserved for a future maturity-ladder override
+ * mechanism and is intentionally untyped/unused in Phase 2.
+ */
+export interface CheckPack {
+  id: string;
+  checks: Check[];
+  dimensions?: DimensionInfo[];
+  levelRules?: unknown;
 }
 
 export interface CheckResult {
