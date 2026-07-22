@@ -2,8 +2,9 @@
 // Phase 2: config-driven pack composition (`composeRegistry`, `runAudit`).
 // Phase 3: the `ai-craft` company check pack (craftflow-plugin detection,
 // NX/changesets/governance/spec-traceability, hygiene templates).
-// CLI + GitHub Action + multi-repo runner remain a later phase
-// (see docs/ai/specs/0011-harness-audit.md).
+// Phase 4: `harness-audit` CLI (`src/cli.ts`, `bin` entry), GitHub Action
+// (`action/action.yml`), and the standalone multi-repo runner below. This
+// closes docs/ai/specs/0011-harness-audit.md's scope.
 
 export type {
   Check,
@@ -66,3 +67,6 @@ export type { ToolId, HarnessKind, PathSpec } from './harness/registry.js';
 export { toolDisplayName } from './harness/registry.js';
 export type { HarnessArtifact } from './harness/collectors.js';
 export { detectHarnesses } from './harness/collectors.js';
+
+export type { MultiRepoReport, MultiRepoRollup, RepoAuditResult, RepoEntry } from './multi-repo.js';
+export { loadRepoManifest, runMultiRepoAudit } from './multi-repo.js';

@@ -12,6 +12,9 @@
       "import": "./index.js"
     }
   },
+  "bin": {
+    "harness-audit": "./cli.js"
+  },
   "files": [
     "**/*"
   ],

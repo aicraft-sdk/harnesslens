@@ -1,0 +1,65 @@
+name: 'Harness Audit'
+description: 'Score a repository AI-harness maturity (L0-L4) and gate CI on a minimum level.'
+author: 'ai-craft'
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+# Runs after checkout — this action does not check out the repository
+# itself. Wraps `harness-audit`'s CLI (`--root`/`--json`/`--min-level`/
+# `--badge`); no scoring logic lives here, only CLI/Action wiring.
+inputs:
+  root:
+    description: 'Path to the repository root to audit (relative to the workspace).'
+    required: false
+    default: '.'
+  min-level:
+    description: 'Minimum required maturity level (0-4). Fails the step when the score is below this level.'
+    required: false
+    default: ''
+  badge:
+    description: 'Path to write an SVG maturity badge to.'
+    required: false
+    default: ''
+  version:
+    description: 'Version of @ai-craft/harness-audit to install (npm dist-tag or version).'
+    required: false
+    default: 'latest'
+
+outputs:
+  level:
+    description: 'Resolved maturity level index (0-4).'
+    value: ${{ steps.audit.outputs.level }}
+  score-percent:
+    description: 'Resolved maturity score percent (0-100).'
+    value: ${{ steps.audit.outputs.score-percent }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run harness-audit
+      id: audit
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ARGS=("${{ inputs.root }}" "--json")
+        if [ -n "${{ inputs.min-level }}" ]; then
+          ARGS+=("--min-level" "${{ inputs.min-level }}")
+        fi
+        if [ -n "${{ inputs.badge }}" ]; then
+          ARGS+=("--badge" "${{ inputs.badge }}")
+        fi
+
+        set +e
+        OUTPUT="$(npx --yes "@ai-craft/harness-audit@${{ inputs.version }}" "${ARGS[@]}")"
+        STATUS=$?
+        set -e
+
+        echo "$OUTPUT"
+        LEVEL_INDEX="$(echo "$OUTPUT" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).level.index')"
+        SCORE_PERCENT="$(echo "$OUTPUT" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).score.percent')"
+        echo "level=$LEVEL_INDEX" >> "$GITHUB_OUTPUT"
+        echo "score-percent=$SCORE_PERCENT" >> "$GITHUB_OUTPUT"
+
+        exit $STATUS
