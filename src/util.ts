@@ -111,9 +111,74 @@ const SECRET_PATTERNS: Array<{ name: string; re: RegExp }> = [
   { name: 'Private key block', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ },
 ];
 
+/**
+ * Explicit, case-insensitive placeholder markers. Deliberately excludes
+ * "test"/"example" alone — `sk_test_...` is a legitimate, still-sensitive
+ * Stripe test-mode key prefix, not a placeholder.
+ */
+const PLACEHOLDER_WORDS = [
+  'placeholder',
+  'yourkey',
+  'your_key',
+  'your-key',
+  'changeme',
+  'redacted',
+  'dummy',
+  'xxxxxxxx',
+];
+
+/** Trip threshold for both adjacent-pair fractions below. */
+const ADJACENT_PAIR_FRACTION_THRESHOLD = 0.4;
+
+/**
+ * Fraction of adjacent character-code pairs that are sequential (+1/-1, e.g.
+ * '1'->'2') and the fraction that are identical repeats (e.g. 'x'->'x').
+ * Computed over the raw matched substring (including any literal prefix like
+ * `sk_live_`) since that is where the plausibility signal lives.
+ */
+function adjacentPairFractions(matched: string): { sequential: number; repeated: number } {
+  const total = matched.length - 1;
+  if (total <= 0) return { sequential: 0, repeated: 0 };
+  let sequential = 0;
+  let repeated = 0;
+  for (let i = 0; i < total; i++) {
+    const diff = Math.abs(matched.charCodeAt(i + 1) - matched.charCodeAt(i));
+    if (diff === 1) sequential++;
+    else if (diff === 0) repeated++;
+  }
+  return { sequential: sequential / total, repeated: repeated / total };
+}
+
+/**
+ * Heuristically classify a matched credential-shaped substring as an
+ * example/placeholder rather than a plausible real secret. Deterministic,
+ * zero-dependency: sequential runs (`1234...`), repeated-character filler
+ * (`xxxx...`), or an explicit placeholder word.
+ */
+function looksLikePlaceholder(matched: string): boolean {
+  const lower = matched.toLowerCase();
+  if (PLACEHOLDER_WORDS.some((word) => lower.includes(word))) return true;
+  const { sequential, repeated } = adjacentPairFractions(matched);
+  return (
+    sequential >= ADJACENT_PAIR_FRACTION_THRESHOLD || repeated >= ADJACENT_PAIR_FRACTION_THRESHOLD
+  );
+}
+
 export function findSecret(content: string): string | null {
   for (const { name, re } of SECRET_PATTERNS) {
-    if (re.test(content)) return name;
+    // Fresh global copy per call/pattern: never mutates SECRET_PATTERNS'
+    // stored RegExp objects, so no lastIndex statefulness leaks across
+    // patterns within a call or across separate findSecret() calls.
+    const globalRe = new RegExp(re.source, re.flags.includes('g') ? re.flags : `${re.flags}g`);
+    let match: RegExpExecArray | null;
+    // Inspect every match for this pattern — only move on to the next
+    // pattern once every occurrence of this one has been confirmed
+    // placeholder-shaped. A single non-placeholder match anywhere in the
+    // content is enough to classify the whole pattern as a real secret.
+    while ((match = globalRe.exec(content)) !== null) {
+      if (!looksLikePlaceholder(match[0])) return name;
+      if (match[0].length === 0) globalRe.lastIndex++;
+    }
   }
   return null;
 }
