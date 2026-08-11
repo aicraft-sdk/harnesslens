@@ -54,6 +54,9 @@ export {
   TOOL_VERSION,
 } from './score.js';
 
+export type { FrameworkMapping, NistAiRmfFunction } from './framework-mappings.js';
+export { FRAMEWORK_MAPPINGS, FRAMEWORK_MAPPING_VERSION, getFrameworkMapping } from './framework-mappings.js';
+
 export { ALL_CHECKS, corePack } from './packs/core/index.js';
 
 export { AI_CRAFT_CHECKS, aiCraftPack, COMPANY_DIMENSION } from './packs/ai-craft/index.js';
