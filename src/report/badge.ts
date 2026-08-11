@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `report/badge.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * SVG badge renderer (`report/badge.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import type { Report } from '../types.js';
@@ -49,9 +49,10 @@ function badgeBody(total: number, value: string): string {
 export function renderBadge(report: Report): string {
   const value = `L${report.level.index}`;
   const total = LABEL_SEG + VALUE_SEG;
+  const tooltip = `Harness Score: ${value} — dimensions map to NIST AI RMF / OWASP Agentic AI Top 10 (see --json for per-dimension detail)`;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="${H}" viewBox="0 0 ${total} ${H}" role="img" aria-label="Harness Score ${value}">
-  <title>Harness Score: ${value}</title>
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${total}" height="${H}" viewBox="0 0 ${total} ${H}" role="img" aria-label="${tooltip}">
+  <title>${tooltip}</title>
   ${badgeBody(total, value)}
 </svg>
 `;
