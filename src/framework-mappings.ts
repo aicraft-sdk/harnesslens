@@ -1,7 +1,8 @@
 /**
  * Data-driven crosswalk from harness-audit dimensions to NIST AI RMF functions
  * and OWASP's Agentic AI Top 10 (2026). "Maps to" / "aligned to" language only
- * — never "certified" or "ISO-compliant" (see no-certification-claims.spec.ts).
+ * — never an accreditation or formal-compliance claim (see
+ * no-certification-claims.spec.ts).
  * Sources: NIST AI RMF 1.0 (nist.gov/itl/ai-risk-management-framework) — the
  * 4 functions (Govern, Map, Measure, Manage) are well-established and require
  * no further confirmation.
