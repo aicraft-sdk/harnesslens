@@ -1,6 +1,6 @@
 /**
- * Ported from harness-score's `score.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Scoring engine — computes dimension scores and maturity level from check
+ * results. See NOTICE for third-party attribution.
  * Differences from upstream (contract-preserving):
  *  - Checks and dimensions now come from a `ComposedRegistry` (`./registry.js`)
  *    instead of a hardcoded `ALL_CHECKS`/`DIMENSIONS` pair — Phase 2 replaces
@@ -20,6 +20,8 @@
 
 import { detectHarnesses } from './harness/index.js';
 import { buildOverlays } from './harness/global-paths.js';
+import { getFrameworkMapping } from './framework-mappings.js';
+import type { FrameworkMapping } from './framework-mappings.js';
 import { computeLevel, DEFAULT_LEVEL_REQUIREMENTS } from './level-requirements.js';
 import { corePack } from './packs/core/index.js';
 import { composeRegistry, type ComposedRegistry } from './registry.js';
@@ -40,7 +42,7 @@ import type {
 export { LEVEL_NAMES, LEVEL_REQUIREMENTS, DEFAULT_LEVEL_REQUIREMENTS } from './level-requirements.js';
 export type { LevelRequirementSpec } from './types.js';
 
-export const DOCS_BASE_URL = 'https://paladini.github.io/harness-score/guide/measure-and-improve';
+export const DOCS_BASE_URL = 'https://github.com/aicraft-sdk/harness-audit';
 export const TOOL_VERSION = '1.3.1';
 
 /** Default composition: the `core` pack only, no overrides — Phase 1's exact behavior. */
@@ -102,6 +104,15 @@ function buildSnapshot(
   };
 }
 
+function buildFrameworkMapping(dimensions: DimensionInfo[]): Record<string, FrameworkMapping> {
+  const result: Record<string, FrameworkMapping> = {};
+  for (const dim of dimensions) {
+    const mapping = getFrameworkMapping(dim.id);
+    if (mapping) result[dim.id] = mapping;
+  }
+  return result;
+}
+
 function snapshotsEqual(a: ScoreSnapshot, b: ScoreSnapshot): boolean {
   if (a.level.index !== b.level.index || a.score.percent !== b.score.percent) return false;
   if (a.checks.length !== b.checks.length) return false;
@@ -139,6 +150,7 @@ export function buildReportFromContext(
     level: maturity.level,
     score: maturity.score,
     dimensions: maturity.dimensions,
+    frameworkMapping: buildFrameworkMapping(registry.dimensions),
     checks: maturity.checks,
     effective,
   };

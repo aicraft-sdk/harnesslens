@@ -1,8 +1,8 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `types.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Core scan/check/report type definitions. See NOTICE for third-party
+ * attribution.
  * `GateMode` now comes from `./scan-config.js` (Phase 1 local module) rather
- * than upstream's `config.ts`, since the full config-file loader is Phase 2.
+ * than a separate `config.ts`, since the full config-file loader is Phase 2.
  */
 
 export type CoreDimensionId = 'context' | 'skills' | 'hooks' | 'sensors' | 'ci' | 'hygiene';
@@ -128,6 +128,7 @@ export interface ScoreSnapshot {
 }
 
 import type { GateMode } from './scan-config.js';
+import type { FrameworkMapping } from './framework-mappings.js';
 
 export interface Report {
   tool: { name: string; version: string };
@@ -149,4 +150,6 @@ export interface Report {
   checks: CheckResult[];
   /** Repo ∪ configured global/extra scopes — what the agent likely sees on this machine. */
   effective: ScoreSnapshot;
+  /** Crosswalk from each scored dimension id to NIST AI RMF functions + OWASP Agentic AI Top 10 ids. */
+  frameworkMapping: Record<DimensionId, FrameworkMapping>;
 }
