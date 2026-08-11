@@ -105,4 +105,78 @@ describe('parseSubmission', () => {
     // Still shape-valid — sanitization is render.ts's job, not the parser's (Behavior Contract).
     expect(result.ok).toBe(true);
   });
+
+  it('ignores a hostile "__proto__"/"constructor" key nested inside frameworkMapping, never lets it surface in the parsed entry, and leaves both Object.prototype and the entry\'s own prototype unpolluted (P2 nested vector, catalog #10 nested variant)', () => {
+    // Unlike the top-level "hostile" test above (extra key on the submission root), this
+    // targets the exact vector Phase 3's prior REM-FIX cycle (commit 1e5900c) touched:
+    // frameworkMapping's own key set is attacker-controlled data (dimension ids echoed back
+    // from the raw JSON), so a literal "__proto__"/"constructor" key inside frameworkMapping
+    // itself is the real nested-object pollution surface, not just the submission root.
+    // Built via JSON.parse (not object-literal syntax) so "__proto__" becomes a genuine own
+    // data property of the raw parsed object, matching what a real submissions/*.json file
+    // parsed by JSON.parse would actually produce.
+    const hostileMapping = JSON.parse(
+      '{"__proto__": {"polluted": true, "nistFunctions": ["Govern"], "owaspIds": []}, ' +
+        '"constructor": {"nistFunctions": ["Govern"], "owaspIds": []}, ' +
+        '"context": {"nistFunctions": ["Govern"], "owaspIds": []}}',
+    );
+
+    const result = parseSubmission({ ...VALID, frameworkMapping: hostileMapping }, 'nested-proto.json');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Only the legitimate "context" key survives — the hostile keys never appear at all,
+      // not even with sanitized/overwritten values.
+      expect(Object.keys(result.entry.frameworkMapping)).toEqual(['context']);
+      // The parsed frameworkMapping object's own prototype link was never reassigned via a
+      // "__proto__"-keyed bracket assignment.
+      expect(Object.getPrototypeOf(result.entry.frameworkMapping)).toBe(Object.prototype);
+    }
+    // Global Object.prototype and a brand-new object stay unpolluted after the call.
+    expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
+    expect((Object.prototype as Record<string, unknown>)['polluted']).toBeUndefined();
+  });
+
+  it('rejects the whole submission when a single dimensions[] entry is malformed, fail-closed (edge-case catalog #12)', () => {
+    // dimensions[] IS the scored data (unlike frameworkMapping's fail-open display metadata —
+    // see the "fails open" test above), so a malformed entry must reject the whole submission
+    // rather than silently trimming it, per parse-submission.ts's inline rationale comment.
+    const result = parseSubmission(
+      {
+        ...VALID,
+        dimensions: [
+          VALID.dimensions[0],
+          { id: 'skills', title: 'Skills & Delegation', max: 5, percent: 100 }, // missing "earned"
+        ],
+      },
+      'malformed-dimension-entry.json',
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain('dimensions');
+    }
+  });
+
+  it('accepts a frameworkMapping entry whose key is a dimension id no longer present in the current registry, as opaque display data (edge-case catalog #13)', () => {
+    // parseSubmission has no registry cross-check — frameworkMapping keys are shape-validated
+    // display metadata, never validated against harness-audit's live dimension list. A stale
+    // key from registry drift must survive as-is rather than crashing or being silently dropped.
+    const result = parseSubmission(
+      {
+        ...VALID,
+        frameworkMapping: {
+          ...VALID.frameworkMapping,
+          'no-longer-exists': { nistFunctions: ['Govern'], owaspIds: [] },
+        },
+      },
+      'unknown-dimension-id.json',
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.entry.frameworkMapping['no-longer-exists']).toEqual({
+        nistFunctions: ['Govern'],
+        owaspIds: [],
+      });
+    }
+  });
 });
