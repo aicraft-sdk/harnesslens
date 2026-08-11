@@ -22,6 +22,24 @@ npx harness-audit
 npx harness-audit /path/to/repo
 ```
 
+## Positioning
+
+`harness-audit` scores how well a **repository** equips an AI coding agent with context,
+guardrails, and feedback loops — it is not a certification, and it does not assert compliance
+with any standard. Its dimensions are mapped to NIST AI RMF's four functions (Govern/Map/
+Measure/Manage) and OWASP's Agentic AI Top 10 risk categories in every report/badge output (see
+`--json`'s `frameworkMapping` field) — "maps to"/"aligned to" language only, never an
+accreditation or formal-compliance claim; no accredited pass/fail mechanism exists against
+either framework today.
+
+This is a different axis than two adjacent tools worth naming explicitly:
+- **Factory.ai "Agent Readiness"** scores an org's *agent autonomy readiness* across 9 pillars —
+  a different question (how much can you trust an agent to act) than harness-audit's (how well is
+  this specific repo harnessed for one).
+- **agent-ready.org / Cloudflare's Agent-Ready Scanner** scores a **website's** AI-discoverability
+  (llms.txt, schema.org, MCP server cards) — a content-discoverability signal, not a repo
+  AI-harness/guardrail-maturity signal.
+
 ## CLI usage
 
 ```
