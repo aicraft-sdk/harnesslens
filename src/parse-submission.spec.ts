@@ -63,6 +63,37 @@ describe('parseSubmission', () => {
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
   });
 
+  it('drops a frameworkMapping entry whose nistFunctions/owaspIds contain non-string elements, instead of coercing them via String()', () => {
+    const result = parseSubmission(
+      {
+        ...VALID,
+        frameworkMapping: { context: { nistFunctions: [{}, null], owaspIds: ['Injection'] } },
+      },
+      'bad-elements.json',
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // The malformed entry is dropped entirely — never stringified into ["[object Object]", "null"].
+      expect(result.entry.frameworkMapping).toEqual({});
+    }
+  });
+
+  it('fails open (drops just the one entry) on a malformed frameworkMapping entry, unlike dimensions[] which fails the whole submission closed', () => {
+    // Deliberate asymmetry: frameworkMapping is supplementary/display metadata (NIST/OWASP
+    // tags shown alongside a dimension), not the scored data itself — dropping one malformed
+    // mapping loses a display label, not correctness. dimensions[] IS the scored data, so a
+    // malformed entry there fails the whole submission closed instead. See parse-submission.ts
+    // for the matching inline rationale comment.
+    const result = parseSubmission(
+      { ...VALID, frameworkMapping: { context: { nistFunctions: 'not-an-array', owaspIds: [] } } },
+      'malformed-mapping.json',
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.entry.frameworkMapping).toEqual({});
+    }
+  });
+
   it('accepts an HTML/script payload as a valid string (parsing ≠ sanitizing)', () => {
     // Uses dimensions[0].title (free-text, no pattern restriction) rather than repoId,
     // which is already covered by the "rejects an unsafe repoId" test above and is

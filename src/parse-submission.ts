@@ -66,6 +66,11 @@ export function parseSubmission(raw: unknown, file: string): ParseResult {
   if (typeof frameworkMappingRaw !== 'object' || frameworkMappingRaw === null || Array.isArray(frameworkMappingRaw)) {
     return { ok: false, file, reason: 'missing or malformed "frameworkMapping"' };
   }
+  // Deliberate fail-open choice for frameworkMapping (unlike dimensions[], which fails the
+  // whole submission closed on malformed entries): frameworkMapping is supplementary/display
+  // metadata (NIST/OWASP tags shown alongside a dimension), not the scored data itself. Losing
+  // one malformed mapping only loses a display label; dimensions[] IS the scored data, so a
+  // malformed entry there must reject the whole submission instead of shipping partial scores.
   const frameworkMapping: ValidatedSubmission['frameworkMapping'] = {};
   for (const [key, value] of Object.entries(frameworkMappingRaw as Record<string, unknown>)) {
     if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
@@ -76,9 +81,20 @@ export function parseSubmission(raw: unknown, file: string): ParseResult {
     ) {
       continue; // Unknown/malformed dimension entries inside frameworkMapping are dropped, not fatal.
     }
+    const nistFunctionsRaw = (value as Record<string, unknown>)['nistFunctions'] as unknown[];
+    const owaspIdsRaw = (value as Record<string, unknown>)['owaspIds'] as unknown[];
+    if (
+      !nistFunctionsRaw.every((v) => typeof v === 'string') ||
+      !owaspIdsRaw.every((v) => typeof v === 'string')
+    ) {
+      // Non-string array elements (e.g. [{}, null]) must not be blindly coerced via
+      // .map(String) — that would silently turn garbage into shipped strings like
+      // "[object Object]"/"null". Drop this entry instead, same as any other malformed shape.
+      continue;
+    }
     frameworkMapping[key] = {
-      nistFunctions: [...((value as Record<string, unknown>)['nistFunctions'] as unknown[])].map(String),
-      owaspIds: [...((value as Record<string, unknown>)['owaspIds'] as unknown[])].map(String),
+      nistFunctions: [...nistFunctionsRaw] as string[],
+      owaspIds: [...owaspIdsRaw] as string[],
     };
   }
   if (typeof r['commitSha'] !== 'string' || !SHA_RE.test(r['commitSha'])) {
