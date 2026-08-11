@@ -1,7 +1,7 @@
 /**
- * Ported from harness-score's `report/markdown.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
- * Difference from upstream: the baseline-diff rendering (`ReportDiff` /
+ * Markdown report renderer (`report/markdown.ts`). See NOTICE for
+ * third-party attribution.
+ * Note: the baseline-diff rendering (`ReportDiff` /
  * `diff.ts`) is a CLI-only concern not in scope for this phase's programmatic
  * core engine, so the optional `diff` parameter and `renderDiffSection` are
  * dropped here — the report-rendering contract for a `Report` is unchanged.
@@ -35,10 +35,17 @@ export function renderMarkdown(report: Report): string {
   lines.push('');
   lines.push('## Dimensions');
   lines.push('');
-  lines.push('| Dimension | Score | % |');
-  lines.push('|---|---|---|');
+  lines.push('| Dimension | Score | % | Framework mapping |');
+  lines.push('|---|---|---|---|');
   for (const dimension of report.dimensions) {
-    lines.push(`| ${dimension.title} | ${dimension.earned}/${dimension.max} | ${dimension.percent}% |`);
+    const mapping = report.frameworkMapping[dimension.id];
+    const mappingText = mapping
+      ? `NIST: ${mapping.nistFunctions.join(', ')}` +
+        (mapping.owaspIds.length > 0 ? ` · OWASP: ${mapping.owaspIds.join(', ')}` : '')
+      : '';
+    lines.push(
+      `| ${dimension.title} | ${dimension.earned}/${dimension.max} | ${dimension.percent}% | ${mappingText.replace(/\|/g, '\\|')} |`,
+    );
   }
   lines.push('');
   lines.push('## Checks');
