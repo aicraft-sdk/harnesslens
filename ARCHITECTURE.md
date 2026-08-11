@@ -74,6 +74,46 @@ lets a target repo, without forking this package:
 flattened into the single `{ checks, dimensions }` list `score.ts` scores against — this is
 the seam that makes multi-pack composition possible without any pack knowing about any other.
 
+## Future direction (not yet scoped)
+
+This package's role today is a check-pack scorer consumed by CI (the GitHub Action) and by
+humans (CLI/badge). A larger idea surfaced during the `exit-gate` check-pack work (which added
+`AIC-11..AIC-17`) and, more directly, while deciding **not** to couple craftflow's own live
+BUILD path to this package: an earlier plan ("Phase B" — craftflow shelling out to this CLI at
+BUILD-verify time) was explicitly rejected, because craftflow is mirrored to a separate,
+externally-consumed `craftflow-public` repo and cannot depend on an unpublished,
+ai-craft-specific package without breaking for anyone using craftflow outside this monorepo:
+
+`harness-audit` could grow beyond a library/CLI that other tools invoke into a standalone
+**badge / certification system** in its own right — something repos (inside or outside this
+monorepo) opt into for an externally-visible maturity signal, rather than a scorer that only
+exists as an input to someone else's pipeline.
+
+This is explicitly **not scoped** — no design decisions below have been made. A future PLAN
+workflow would need to work out, at minimum:
+
+- What "certification" actually means here: a public badge API, signed/verifiable
+  attestations, a hosted leaderboard across repos, tiered public/private scoring, or some
+  combination.
+- Whether this implies a hosted service (this package is currently zero-network,
+  filesystem-only by design — see "Determinism/safety guarantees" above — so any hosted
+  component would be a new surface, not an extension of the existing scorer).
+- How it relates to the existing `runMultiRepoAudit` rollup, which already aggregates
+  fleet-wide scores but has no public/external-facing surface today.
+- **A real detection gap found while prototyping a self-audit badge for craftflow itself**:
+  running this package's own CLI against `tools/craftflow-plugin` (a Claude Code plugin bundle
+  — `plugins/<name>/skills/`, `plugins/<name>/agents/`, etc.) scored `L0 Unharnessed, 15%`, even
+  though craftflow demonstrably has 11 agents, 24 skills, and 24 hooks. The core/ai-craft checks
+  assume repo-root conventions (root `AGENTS.md`, root `.claude/skills/`, root `.github/
+  workflows/`) that a nested plugin bundle intentionally doesn't follow at its own top level.
+  Any future badge/certification product needs either a "plugin-shaped repo" detection mode or
+  a configurable path-root remap before it can score something like craftflow fairly — shipping
+  a badge without this would actively mislead (a low score sitting next to prose describing a
+  mature toolset). No fix attempted here; flagging so the future PLAN scopes it explicitly
+  rather than rediscovering it.
+
+Capturing the idea here so it isn't lost — not a commitment to build it.
+
 ## The two built-in packs
 
 - **`core`** (`src/packs/core/`) — the 36 checks ported from upstream `harness-score`,
@@ -90,8 +130,13 @@ the seam that makes multi-pack composition possible without any pack knowing abo
   under `core` alone. Detection is structural (a path-shape regex), not name-coupled to any
   one plugin. The pack also adds NX/changesets release-convention checks
   (`monorepo.ts`), AI-First governance/spec-traceability checks (`governance.ts`), and two
-  hygiene template checks (`hygiene.ts`) — all scored under a dedicated `company` dimension so
-  this pack's score is additive to, never mixed into, `core`'s 6 dimensions.
+  hygiene template checks (`hygiene.ts`) — all scored under a dedicated `company` dimension.
+  A second constituent, `exit-gate.ts`, scores Addy Osmani's 7 agent-output "exit gate" quality
+  dimensions (mutation testing, security, accessibility, performance, cost, maintainability,
+  comprehensibility) as static CI/config-presence readiness checks (`AIC-11`-`AIC-17`) under
+  its own `exit-gate` dimension — see the Decision RFC at
+  `docs/plans/2026-08-11-agent-exit-gate-quality-dimensions-rfc.md`. Both `company` and
+  `exit-gate` are additive to, never mixed into, `core`'s 6 dimensions.
 
 ## Determinism/safety guarantees
 

@@ -1,0 +1,7 @@
+{
+  "name": "@exit-gate-fixture/widgets",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@axe-core/cli": "^4.8.0"
+  }
+}

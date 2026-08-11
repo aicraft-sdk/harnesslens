@@ -1,0 +1,7 @@
+{
+  "name": "exit-gate-lint-script-fp-fixture",
+  "version": "1.0.0",
+  "scripts": {
+    "lint:complexity": "complexity-report ./src"
+  }
+}

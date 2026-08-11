@@ -165,7 +165,7 @@ renderers), `defineCheck` / `definePack` (typed authoring helpers), `composeRegi
 ## Maturity model
 
 Repos are scored L0-L4 across the 6 core dimensions (plus any pack- or config-declared extra
-dimensions, e.g. `ai-craft`'s `company` dimension):
+dimensions, e.g. `ai-craft`'s `company` and `exit-gate` dimensions):
 
 | Dimension | Title |
 |---|---|

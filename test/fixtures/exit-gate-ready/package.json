@@ -1,0 +1,13 @@
+{
+  "name": "exit-gate-ready-fixture",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@axe-core/cli": "^4.8.0",
+    "@stryker-mutator/core": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
