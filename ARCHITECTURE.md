@@ -47,6 +47,13 @@ whole pipeline together: it resolves config (explicit `config` param, else
 `ScanContext`(s), and calls `buildReportFromContext`. The CLI (`src/cli.ts`) is a thin wrapper
 around `runAudit` plus the three renderers — no scoring logic lives in the CLI itself.
 
+**Positioning:** this is a repo-harness maturity scorer, not a certification — every dimension
+is additionally mapped to NIST AI RMF / OWASP Agentic AI Top 10 ("maps to"/"aligned to"
+language only, see `src/framework-mappings.ts`) and surfaced in all three renderers above. See
+the README's [Positioning](./README.md#positioning) section for the full framing, including how
+this differs from Factory.ai "Agent Readiness" and agent-ready.org/Cloudflare's Agent-Ready
+Scanner.
+
 ## The extension model
 
 A **`Check`** is the atomic unit: `{ id, dimension, title, points, remediation, run(ctx) }`,
@@ -74,31 +81,36 @@ lets a target repo, without forking this package:
 flattened into the single `{ checks, dimensions }` list `score.ts` scores against — this is
 the seam that makes multi-pack composition possible without any pack knowing about any other.
 
-## Future direction (not yet scoped)
+## Future direction
 
 This package's role today is a check-pack scorer consumed by CI (the GitHub Action) and by
-humans (CLI/badge). A larger idea surfaced during the `exit-gate` check-pack work (which added
-`AIC-11..AIC-17`) and, more directly, while deciding **not** to couple craftflow's own live
-BUILD path to this package: an earlier plan ("Phase B" — craftflow shelling out to this CLI at
-BUILD-verify time) was explicitly rejected, because craftflow is mirrored to a separate,
-externally-consumed `craftflow-public` repo and cannot depend on an unpublished,
-ai-craft-specific package without breaking for anyone using craftflow outside this monorepo:
+humans (CLI/badge/markdown). A larger idea surfaced during the `exit-gate` check-pack work
+(which added `AIC-11..AIC-17`) and, more directly, while deciding **not** to couple craftflow's
+own live BUILD path to this package: an earlier plan ("Phase B" — craftflow shelling out to
+this CLI at BUILD-verify time) was explicitly rejected, because craftflow is mirrored to a
+separate, externally-consumed `craftflow-public` repo and cannot depend on an unpublished,
+ai-craft-specific package without breaking for anyone using craftflow outside this monorepo.
 
-`harness-audit` could grow beyond a library/CLI that other tools invoke into a standalone
-**badge / certification system** in its own right — something repos (inside or outside this
-monorepo) opt into for an externally-visible maturity signal, rather than a scorer that only
-exists as an input to someone else's pipeline.
+Two pieces of what was originally an open-ended "badge / certification system" idea are no
+longer unscoped speculation — they have a concrete, in-progress implementation plan in this
+same initiative: a data-driven NIST AI RMF / OWASP Agentic AI Top 10 crosswalk
+(`src/framework-mappings.ts`, `Report.frameworkMapping`, surfaced in all three renderers — see
+the Positioning note above) is now built, and a static, self-reported leaderboard
+(`tools/harness-audit-leaderboard` — PR-based submissions, GitHub Actions-published to GitHub
+Pages) is scoped for a later phase of this same plan.
 
-This is explicitly **not scoped** — no design decisions below have been made. A future PLAN
-workflow would need to work out, at minimum:
+What remains genuinely open, with no design decisions made:
 
-- What "certification" actually means here: a public badge API, signed/verifiable
-  attestations, a hosted leaderboard across repos, tiered public/private scoring, or some
-  combination.
-- Whether this implies a hosted service (this package is currently zero-network,
-  filesystem-only by design — see "Determinism/safety guarantees" above — so any hosted
-  component would be a new surface, not an extension of the existing scorer).
-- How it relates to the existing `runMultiRepoAudit` rollup, which already aggregates
+- **A live hosted backend.** This package (and the planned static leaderboard) are
+  zero-network, filesystem/build-time-only by design (see "Determinism/safety guarantees"
+  above) — a dynamic, queryable service (signed/verifiable attestations, a live submission API,
+  tiered public/private scoring) would be a new surface, not an extension of the existing
+  scorer or the static leaderboard.
+- **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
+  "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
+  pass/fail mechanism against NIST AI RMF or OWASP exists, and building one is a distinct,
+  unscoped decision.
+- How this relates to the existing `runMultiRepoAudit` rollup, which already aggregates
   fleet-wide scores but has no public/external-facing surface today.
 - **A real detection gap found while prototyping a self-audit badge for craftflow itself**:
   running this package's own CLI against `tools/craftflow-plugin` (a Claude Code plugin bundle
@@ -106,13 +118,13 @@ workflow would need to work out, at minimum:
   though craftflow demonstrably has 11 agents, 24 skills, and 24 hooks. The core/ai-craft checks
   assume repo-root conventions (root `AGENTS.md`, root `.claude/skills/`, root `.github/
   workflows/`) that a nested plugin bundle intentionally doesn't follow at its own top level.
-  Any future badge/certification product needs either a "plugin-shaped repo" detection mode or
-  a configurable path-root remap before it can score something like craftflow fairly — shipping
-  a badge without this would actively mislead (a low score sitting next to prose describing a
+  Any future badge/leaderboard surface needs either a "plugin-shaped repo" detection mode or a
+  configurable path-root remap before it can score something like craftflow fairly — shipping
+  one without this would actively mislead (a low score sitting next to prose describing a
   mature toolset). No fix attempted here; flagging so the future PLAN scopes it explicitly
   rather than rediscovering it.
 
-Capturing the idea here so it isn't lost — not a commitment to build it.
+Capturing the still-open ideas here so they aren't lost — not a commitment to build them.
 
 ## The two built-in packs
 
