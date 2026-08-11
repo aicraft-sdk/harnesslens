@@ -1,7 +1,7 @@
 /**
- * Ported from harness-score's `report/terminal.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
- * Difference from upstream: the baseline-diff rendering (`ReportDiff` /
+ * Terminal report renderer (`report/terminal.ts`). See NOTICE for
+ * third-party attribution.
+ * Note: the baseline-diff rendering (`ReportDiff` /
  * `diff.ts`) is a CLI-only concern not in scope for this phase's programmatic
  * core engine, so the optional `diff` parameter and `renderDiffSection` are
  * dropped here — the report-rendering contract for a `Report` is unchanged.
@@ -84,6 +84,13 @@ export function renderTerminal(report: Report): string {
     lines.push(
       `  ${dimension.title.padEnd(20)} ${bar(dimension.percent)} ${pct}  ${dim(`${dimension.earned}/${dimension.max} pts`)}`,
     );
+    const mapping = report.frameworkMapping[dimension.id];
+    if (mapping) {
+      lines.push(
+        dim(`      ↳ NIST: ${mapping.nistFunctions.join(', ')}`) +
+          (mapping.owaspIds.length > 0 ? dim(` · OWASP: ${mapping.owaspIds.join(', ')}`) : ''),
+      );
+    }
   }
   lines.push('');
 
