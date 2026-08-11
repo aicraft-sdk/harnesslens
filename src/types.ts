@@ -150,6 +150,12 @@ export interface Report {
   checks: CheckResult[];
   /** Repo ∪ configured global/extra scopes — what the agent likely sees on this machine. */
   effective: ScoreSnapshot;
-  /** Crosswalk from each scored dimension id to NIST AI RMF functions + OWASP Agentic AI Top 10 ids. */
-  frameworkMapping: Record<DimensionId, FrameworkMapping>;
+  /**
+   * Crosswalk from each scored dimension id to NIST AI RMF functions + OWASP
+   * Agentic AI Top 10 ids. `Partial` because `buildFrameworkMapping` (`score.ts`)
+   * only populates keys `getFrameworkMapping` resolves — a custom pack's
+   * `extraDimensions` entry (or a config-driven `.harness-audit.json` "dimensions"
+   * entry, see `api.ts`) outside the built-in 8 has no entry here.
+   */
+  frameworkMapping: Partial<Record<DimensionId, FrameworkMapping>>;
 }
