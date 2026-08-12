@@ -58,7 +58,7 @@ any other field is dropped by the allowlist parser and never reaches the leaderb
 | `score` | `number` | `82` |
 | `level` | `{ index: number; name: string }` | `{ "index": 3, "name": "Structured" }` |
 | `dimensions` | `Array<{ id: string; title: string; earned: number; max: number; percent: number }>` | `[{ "id": "context", "title": "Context Engineering", "earned": 8, "max": 10, "percent": 80 }]` |
-| `frameworkMapping` | `Record<string, { nistFunctions: string[]; owaspIds: string[] }>` | `{ "context": { "nistFunctions": ["GOVERN"], "owaspIds": ["ASI-01"] } }` |
+| `frameworkMapping` | `Record<string, { nistFunctions: string[]; owaspIds: string[] }>` | `{ "context": { "nistFunctions": ["Govern"], "owaspIds": ["ASI01"] } }` |
 | `commitSha` | `string` | `"a1b2c3d4e5f6..."` |
 | `scannedAt` | `string` (ISO 8601) | `"2026-08-11T06:00:00.000Z"` |
 
