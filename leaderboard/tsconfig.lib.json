@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "../../dist/tools/harness-audit-leaderboard",
+    "outDir": "./dist",
     "declaration": true,
     "types": ["node"],
     "skipLibCheck": true,

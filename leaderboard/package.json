@@ -8,6 +8,15 @@
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
-    "happy-dom": "^15.0.0"
+    "happy-dom": "^15.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.0.5"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.lib.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck-spec": "tsc --noEmit -p tsconfig.spec.json"
   }
 }

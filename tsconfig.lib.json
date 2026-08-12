@@ -1,7 +1,8 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "../../dist/packages/harness-audit",
+    "outDir": "./dist",
+    "rootDir": "./src",
     "declaration": true,
     "types": ["node"],
     "skipLibCheck": true,
