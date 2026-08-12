@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
-const FORBIDDEN = /\bcertified\b|\biso[- ]?compliant\b/i;
+const FORBIDDEN = /\bcertified\b|\biso[- ]?compliant\b|\bverified\s+(harness|repo(?:sitory)?|secure|compliant)\b/i;
 
 function walkTs(dir: string): string[] {
   const out: string[] = [];
@@ -32,5 +32,14 @@ describe('no "certified"/"ISO-compliant" language anywhere in shipped output or 
       const text = fs.readFileSync(path.join(ROOT, name), 'utf8');
       expect(FORBIDDEN.test(text), `${name} contains forbidden certification language`).toBe(false);
     }
+  });
+
+  it('flags a constructed "Verified Secure" claim', () => {
+    expect(FORBIDDEN.test('This tool is Verified Secure by our team.')).toBe(true);
+  });
+
+  it('does not flag existing legitimate uses of "verified"', () => {
+    expect(FORBIDDEN.test('has not been independently verified')).toBe(false);
+    expect(FORBIDDEN.test('cross-verified against 3 sources')).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 {
-  "name": "@ai-craft/harness-audit",
+  "name": "harnesslens",
   "version": "0.0.1",
   "description": "Extensible AI-harness maturity scorer for auditing company repos",
   "type": "module",
@@ -13,7 +13,7 @@
     }
   },
   "bin": {
-    "harness-audit": "./cli.js"
+    "harnesslens": "./cli.js"
   },
   "files": [
     "**/*"

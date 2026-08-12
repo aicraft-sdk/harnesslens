@@ -37,11 +37,11 @@ const defaultIO: CliIO = {
   stderr: (s) => process.stderr.write(s),
 };
 
-const HELP = `harness-audit — extensible AI-harness maturity scorer
+const HELP = `harnesslens — extensible AI-harness maturity scorer
 
 Usage:
-  harness-audit [path] [options]
-  harness-audit multi --config <manifest.json> [options]
+  harnesslens [path] [options]
+  harnesslens multi --config <manifest.json> [options]
 
 Options:
   --root <path>        Repo root to audit (default: positional arg, else cwd)
@@ -155,7 +155,7 @@ async function runAuditCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> 
     const config: HarnessAuditConfig = fileConfig ?? { packs: { core: true, 'ai-craft': aiCraftPack } };
     report = await runAudit({ root, config });
   } catch (error) {
-    io.stderr(`harness-audit: ${error instanceof Error ? error.message : String(error)}\n`);
+    io.stderr(`harnesslens: ${error instanceof Error ? error.message : String(error)}\n`);
     return { exitCode: 1 };
   }
 
@@ -163,7 +163,7 @@ async function runAuditCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> 
     try {
       fs.writeFileSync(path.resolve(args.badgePath), renderBadge(report), 'utf8');
     } catch (error) {
-      io.stderr(`harness-audit: failed to write badge — ${error instanceof Error ? error.message : String(error)}\n`);
+      io.stderr(`harnesslens: failed to write badge — ${error instanceof Error ? error.message : String(error)}\n`);
       return { exitCode: 1 };
     }
   }
@@ -186,7 +186,7 @@ async function runAuditCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> 
 function renderMultiRepoTable(result: MultiRepoReport): string {
   const lines: string[] = [];
   lines.push('');
-  lines.push(`  harness-audit multi — ${result.results.length} repo(s)`);
+  lines.push(`  harnesslens multi — ${result.results.length} repo(s)`);
   lines.push('');
   for (const { id, path: repoPath, report, error } of result.results) {
     if (report === null) {
@@ -208,7 +208,7 @@ function renderMultiRepoTable(result: MultiRepoReport): string {
 
 async function runMultiCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> {
   if (!args.manifestPath) {
-    io.stderr('harness-audit multi: --config <manifest.json> is required\n');
+    io.stderr('harnesslens multi: --config <manifest.json> is required\n');
     return { exitCode: 1 };
   }
 
@@ -217,7 +217,7 @@ async function runMultiCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> 
     const entries = loadRepoManifest(args.manifestPath);
     result = await runMultiRepoAudit(entries);
   } catch (error) {
-    io.stderr(`harness-audit multi: ${error instanceof Error ? error.message : String(error)}\n`);
+    io.stderr(`harnesslens multi: ${error instanceof Error ? error.message : String(error)}\n`);
     return { exitCode: 1 };
   }
 
@@ -241,7 +241,7 @@ async function runMultiCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> 
 export async function main(argv: string[], io: CliIO = defaultIO): Promise<CliResult> {
   const parsed = parseArgs(argv);
   if ('error' in parsed) {
-    io.stderr(`harness-audit: ${parsed.error}\n\n${HELP}`);
+    io.stderr(`harnesslens: ${parsed.error}\n\n${HELP}`);
     return { exitCode: 1 };
   }
 

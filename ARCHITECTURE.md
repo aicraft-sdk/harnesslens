@@ -1,6 +1,6 @@
 # Architecture
 
-How `@ai-craft/harness-audit` turns a repository on disk into a maturity report, and how to
+How `harnesslens` turns a repository on disk into a maturity report, and how to
 extend it without forking.
 
 ## The pipeline
@@ -95,7 +95,7 @@ Two pieces of what was originally an open-ended "badge / certification system" i
 longer speculation — both have shipped as part of this same initiative: a data-driven NIST AI
 RMF / OWASP Agentic AI Top 10 crosswalk (`src/framework-mappings.ts`, `Report.frameworkMapping`,
 surfaced in all three renderers — see the Positioning note above), and a static, self-reported
-leaderboard (`tools/harness-audit-leaderboard` — see that package's own README) built
+leaderboard (`leaderboard/` — see that directory's own README) built
 end-to-end: allowlist submission parsing with dedup/staleness aggregation, `.textContent`-only
 rendering, a CLI writing `site-data.json`, PR-based submission (never direct-commit), and a
 `.github/workflows/rebuild-leaderboard.yml` pipeline that builds and publishes the static site
@@ -105,7 +105,7 @@ What remains genuinely open, with no design decisions made:
 
 - **A live hosted backend.** This package's scorer is zero-network, filesystem/build-time-only
   by design (see "Determinism/safety guarantees" above), and the static leaderboard's own
-  generator (`tools/harness-audit-leaderboard`) follows the same rule — publishing is CI-driven
+  generator (`leaderboard/`) follows the same rule — publishing is CI-driven
   and PR-gated, never a live write path. A dynamic, queryable service (signed/verifiable
   attestations, a live submission API, tiered public/private scoring) would be a new surface,
   not an extension of the existing scorer or the static leaderboard.

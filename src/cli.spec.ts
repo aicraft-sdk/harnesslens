@@ -73,7 +73,7 @@ describe('harness-audit CLI — default terminal output', () => {
       const result = await main(['--root', dir], io);
 
       expect(result.exitCode).toBe(1);
-      expect(stderrLines.join('')).toContain('harness-audit:');
+      expect(stderrLines.join('')).toContain('harnesslens:');
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }

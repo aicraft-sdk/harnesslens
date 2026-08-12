@@ -16,4 +16,10 @@ describe('renderBadge — framework mapping tooltip', () => {
     expect(svg).toContain('>harness</text>');
     expect(svg).toContain(`>L${report.level.index}</text>`);
   });
+
+  it('uses the HarnessLens-branded tooltip', () => {
+    const report = buildReportFromScanContext(createScanContext(LEVEL_2_FIXTURE));
+    const svg = renderBadge(report);
+    expect(svg).toContain('HarnessLens Score:');
+  });
 });

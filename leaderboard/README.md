@@ -1,14 +1,14 @@
-# harness-audit-leaderboard
+# harnesslens-leaderboard
 
-Static-site leaderboard generator consuming `@ai-craft/harness-audit --json` submissions
+Static-site leaderboard generator consuming `harnesslens --json` submissions
 (self-reported via CI). Internal tooling — `private: true`, not published to npm.
 
 ## What this is
 
-`harness-audit-leaderboard` turns a directory of self-reported `@ai-craft/harness-audit`
+`harnesslens-leaderboard` turns a directory of self-reported `harnesslens`
 scan results into a static, client-side-rendered leaderboard table. It is a companion
-package to [`@ai-craft/harness-audit`](../../packages/harness-audit/README.md): that
-package produces the JSON report for a single repo (`harness-audit --json`); this package
+package to [`harnesslens`](../README.md): that
+package produces the JSON report for a single repo (`harnesslens --json`); this package
 aggregates many repos' reports into one comparable table and publishes it as a static
 site (via GitHub Pages — see `.github/workflows/rebuild-leaderboard.yml`).
 
@@ -70,7 +70,7 @@ Rather than accept a direct write (e.g. a webhook or API that writes straight in
 
 - A human reviews the diff before a new/updated submission JSON is merged (the "Durable
   Decisions" trust boundary documented in
-  [`docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md`](../../docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md)).
+  [`docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md`](https://github.com/aicraft-sdk/ai-craft/blob/main/docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md)).
 - The allowlist parser (`src/parse-submission.ts`) is a second, independent layer of
   defense even if a malformed or malicious submission slips past review — only the 7
   fields above are ever read, and the render layer is `.textContent`-only (never
@@ -81,13 +81,13 @@ Rather than accept a direct write (e.g. a webhook or API that writes straight in
 
 ## Submitting your repo's score
 
-Add a workflow like this to **your own repo** (not this one) to open a PR against this
-monorepo's `tools/harness-audit-leaderboard/submissions/` directory whenever you push to
+Add a workflow like this to **your own repo** (not this one) to open a PR against
+`aicraft-sdk/harnesslens`'s `leaderboard/submissions/` directory whenever you push to
 `main`:
 
 ```yaml
-# .github/workflows/harness-audit-submit.yml (add to YOUR repo — not this one)
-name: Submit harness-audit score to leaderboard
+# .github/workflows/harnesslens-submit.yml (add to YOUR repo — not this one)
+name: Submit harnesslens score to leaderboard
 on:
   push:
     branches: [main]
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npx --yes @ai-craft/harness-audit --json > /tmp/report.json
+      - run: npx --yes harnesslens --json > /tmp/report.json
       - name: Build submission JSON
         run: |
           node -e '
@@ -117,7 +117,7 @@ jobs:
         with:
           token: ${{ secrets.LEADERBOARD_SUBMIT_TOKEN }} # repo-scoped PAT/App token — you provision this
           path: /tmp/submission.json
-          # ... push /tmp/submission.json to ai-craft's tools/harness-audit-leaderboard/submissions/<repoId>.json
+          # ... push /tmp/submission.json to aicraft-sdk/harnesslens's leaderboard/submissions/<repoId>.json
 ```
 
 `LEADERBOARD_SUBMIT_TOKEN` provisioning (a fine-grained PAT or GitHub App scoped to this
@@ -129,8 +129,8 @@ not create, hold, or distribute that credential.
 
 ```bash
 nvm use 22.14.0
-pnpm exec nx build harness-audit-leaderboard
-node dist/tools/harness-audit-leaderboard/cli.js <submissionsDir> <outDir>
+npm run build
+node dist/cli.js <submissionsDir> <outDir>
 ```
 
 - `<submissionsDir>` defaults to `submissions` (relative to cwd) if omitted.
@@ -151,7 +151,7 @@ attacker-controlled input by design. Two independent layers keep that input iner
   read; the output object is always constructed fresh, never `{...raw}`. `__proto__` /
   `constructor` / `prototype` keys are rejected wherever a submission-controlled string is
   later used as an object key (`frameworkMapping`, `dimensions[].id`). See
-  [`docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md`](../../docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md).
+  [`docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md`](https://github.com/aicraft-sdk/ai-craft/blob/main/docs/2026-08-11-harness-audit-leaderboard-submission-allowlist-decision.md).
 - **Output: `.textContent`-only rendering** (`src/render.ts`) — every submission-derived
   table cell (repo id, dimension titles, framework-mapping text) is written via
   `.textContent`, never `.innerHTML`, so an HTML/script payload in a submission field

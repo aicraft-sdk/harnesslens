@@ -1,4 +1,4 @@
-# @ai-craft/harness-audit
+# harnesslens
 
 Extensible AI-harness maturity scorer for auditing company repos — how well does each repo
 equip an AI coding agent with context, guardrails, and feedback loops?
@@ -11,18 +11,18 @@ GitHub Action, and a multi-repo runner for fleet-wide comparisons.
 
 ```bash
 # Install (as a devDependency, or run ad hoc via npx)
-pnpm add -D @ai-craft/harness-audit
+pnpm add -D harnesslens
 
 # Audit the current directory
-npx harness-audit
+npx harnesslens
 
 # Audit a specific repo
-npx harness-audit /path/to/repo
+npx harnesslens /path/to/repo
 ```
 
 ## Positioning
 
-`harness-audit` scores how well a **repository** equips an AI coding agent with context,
+`harnesslens` scores how well a **repository** equips an AI coding agent with context,
 guardrails, and feedback loops — it is not a certification, and it does not assert compliance
 with any standard. Its dimensions are mapped to NIST AI RMF's four functions (Govern/Map/
 Measure/Manage) and OWASP's Agentic AI Top 10 risk categories in every report/badge output (see
@@ -32,7 +32,7 @@ either framework today.
 
 This is a different axis than two adjacent tools worth naming explicitly:
 - **Factory.ai "Agent Readiness"** scores an org's *agent autonomy readiness* across 9 pillars —
-  a different question (how much can you trust an agent to act) than harness-audit's (how well is
+  a different question (how much can you trust an agent to act) than harnesslens's (how well is
   this specific repo harnessed for one).
 - **agent-ready.org / Cloudflare's Agent-Ready Scanner** scores a **website's** AI-discoverability
   (llms.txt, schema.org, MCP server cards) — a content-discoverability signal, not a repo
@@ -40,18 +40,18 @@ This is a different axis than two adjacent tools worth naming explicitly:
 
 ## Leaderboard (experimental)
 
-An experimental, self-reported leaderboard aggregates `harness-audit --json` scores across
+An experimental, self-reported leaderboard aggregates `harnesslens --json` scores across
 participating repos into a static site. Every entry is self-reported by the scanned repo's
 own maintainers and has not been independently verified — treat it as a directional signal,
 not an authoritative ranking. See
-[`tools/harness-audit-leaderboard/README.md`](../../tools/harness-audit-leaderboard/README.md)
+[`leaderboard/README.md`](./leaderboard/README.md)
 for the submission schema and how to submit your repo's score.
 
 ## CLI usage
 
 ```
-harness-audit [path] [options]
-harness-audit multi --config <manifest.json> [options]
+harnesslens [path] [options]
+harnesslens multi --config <manifest.json> [options]
 
 Options:
   --root <path>         Repo root to audit (default: positional arg, else cwd)
@@ -67,19 +67,19 @@ Examples:
 
 ```bash
 # Terminal report for the current repo
-harness-audit
+harnesslens
 
 # JSON report, gated on at least L2 (Guided) — useful in CI
-harness-audit --root . --json --min-level 2
+harnesslens --root . --json --min-level 2
 
 # Markdown report (e.g. to post as a PR comment)
-harness-audit --md > harness-report.md
+harnesslens --md > harness-report.md
 
 # Write an SVG maturity badge alongside the terminal report
-harness-audit --badge ./badge.svg
+harnesslens --badge ./badge.svg
 
 # Audit a fleet of repos from a manifest
-harness-audit multi --config ./repos.json --json
+harnesslens multi --config ./repos.json --json
 ```
 
 When run with no explicit config, the CLI's own default composes the `core` pack (36 ported
@@ -160,7 +160,7 @@ import {
   renderTerminal,
   renderMarkdown,
   renderBadge,
-} from '@ai-craft/harness-audit';
+} from 'harnesslens';
 
 // Lowest-level: build a ScanContext yourself, then score it.
 const ctx = createScanContext('/path/to/repo');
@@ -217,7 +217,7 @@ missing. The ladder is fully config-overridable via `.harness-audit.json`'s `lev
 ## Writing a custom check/pack
 
 ```ts
-import { defineCheck, definePack } from '@ai-craft/harness-audit';
+import { defineCheck, definePack } from 'harnesslens';
 
 const hasRunbook = defineCheck({
   id: 'CUST-01',
@@ -242,7 +242,7 @@ in alongside `core`/`ai-craft` (see [Config file](#config-file)).
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: ai-craft/harness-audit@v1 # replace with the actual published action ref
+- uses: aicraft-sdk/harnesslens@v1 # replace with the actual published action ref
   with:
     root: '.'
     min-level: '2'
@@ -250,21 +250,21 @@ in alongside `core`/`ai-craft` (see [Config file](#config-file)).
 ```
 
 Inputs: `root` (default `.`), `min-level` (fails the step when below this level), `badge`
-(path to write an SVG badge), `version` (npm dist-tag/version of `@ai-craft/harness-audit` to
+(path to write an SVG badge), `version` (npm dist-tag/version of `harnesslens` to
 install, default `latest`). Outputs: `level` (resolved maturity level index) and
 `score-percent`. See `action/action.yml`.
 
 ## Multi-repo usage
 
 ```ts
-import { runMultiRepoAudit, loadRepoManifest } from '@ai-craft/harness-audit';
+import { runMultiRepoAudit, loadRepoManifest } from 'harnesslens';
 
 const entries = loadRepoManifest('./repos.json'); // { "repos": [{ "id", "path" }] }
 const result = await runMultiRepoAudit(entries);
 console.log(result.rollup); // { repoCount, averageScorePercent, averageLevelIndex, levelCounts, failedCount }
 ```
 
-Or via the CLI: `harness-audit multi --config ./repos.json`. Each repo is audited in
+Or via the CLI: `harnesslens multi --config ./repos.json`. Each repo is audited in
 parallel and isolated — one bad path or malformed config fails only that entry (see its
 `error` field), not the whole run.
 

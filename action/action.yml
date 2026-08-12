@@ -1,4 +1,4 @@
-name: 'Harness Audit'
+name: 'HarnessLens'
 description: 'Score a repository AI-harness maturity (L0-L4) and gate CI on a minimum level.'
 author: 'ai-craft'
 branding:
@@ -22,7 +22,7 @@ inputs:
     required: false
     default: ''
   version:
-    description: 'Version of @ai-craft/harness-audit to install (npm dist-tag or version).'
+    description: 'Version of harnesslens to install (npm dist-tag or version).'
     required: false
     default: 'latest'
 
@@ -37,7 +37,7 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Run harness-audit
+    - name: Run harnesslens
       id: audit
       shell: bash
       run: |
@@ -52,7 +52,7 @@ runs:
         fi
 
         set +e
-        OUTPUT="$(npx --yes "@ai-craft/harness-audit@${{ inputs.version }}" "${ARGS[@]}")"
+        OUTPUT="$(npx --yes "harnesslens@${{ inputs.version }}" "${ARGS[@]}")"
         STATUS=$?
         set -e
 

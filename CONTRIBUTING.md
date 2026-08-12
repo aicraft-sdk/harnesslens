@@ -1,7 +1,6 @@
 # Contributing
 
-`@ai-craft/harness-audit` is a publishable package inside the `ai-craft` NX monorepo (see the
-repo-root `CLAUDE.md` for the monorepo-wide conventions this section extends).
+`harnesslens` is a standalone, publishable npm package.
 
 ## Dev setup
 
@@ -9,24 +8,17 @@ repo-root `CLAUDE.md` for the monorepo-wide conventions this section extends).
 # Node 22.14.0 required
 nvm use 22.14.0
 
-# From the monorepo root
-pnpm install
+npm install
 ```
 
 ## Commands
 
-Run from the monorepo root:
-
 ```bash
-nx build harness-audit               # compile via @nx/js:tsc
-nx test harness-audit                # run the Vitest suite (Vitest, inferred via @nx/vite)
-nx run harness-audit:typecheck       # tsc --noEmit against tsconfig.lib.json (inferred via @nx/js)
-nx run harness-audit:typecheck-spec  # tsc --noEmit against tsconfig.spec.json
+npm run build            # compile via tsc, copy assets, verify dist
+npm test                 # run the Vitest suite
+npm run typecheck        # tsc --noEmit against tsconfig.json
+npm run typecheck-spec   # tsc --noEmit against tsconfig.spec.json
 ```
-
-Use `--skip-nx-cache` when you need a fresh (non-cached) run, and prefer
-`nx affected --target=test --projects=harness-audit` when verifying a change scoped to this
-package inside a larger monorepo change.
 
 ## TDD expectation
 
@@ -41,7 +33,7 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md#the-extension-model) for the full exte
 Minimal example:
 
 ```ts
-import { defineCheck, definePack } from '@ai-craft/harness-audit';
+import { defineCheck, definePack } from 'harnesslens';
 
 const myCheck = defineCheck({
   id: 'CUST-01',
@@ -66,9 +58,8 @@ authoring an external pack, add it to the relevant file under `src/packs/core/` 
 
 ## PR expectations
 
-- `nx test harness-audit` and `nx build harness-audit` pass (exit 0), with no drop in the
-  existing test count.
-- `nx run harness-audit:typecheck-spec` passes.
+- `npm test` and `npm run build` pass (exit 0), with no drop in the existing test count.
+- `npm run typecheck-spec` passes.
 - Determinism is preserved: the same repo input must always produce the same `Report` output
   — no `Date.now()`, random ids, or unstable key/array ordering in scoring or aggregation
   code (see `src/multi-repo.ts` for the standard this is held to).
