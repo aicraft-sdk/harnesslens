@@ -6,5 +6,8 @@
   "type": "module",
   "engines": { "node": ">=22.0.0" },
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {},
+  "devDependencies": {
+    "happy-dom": "^15.0.0"
+  }
 }

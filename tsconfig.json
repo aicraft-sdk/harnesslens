@@ -8,7 +8,7 @@
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "lib": ["ES2022"]
+    "lib": ["ES2022", "DOM"]
   },
   "files": [],
   "include": [],
