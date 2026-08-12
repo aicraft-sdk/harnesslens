@@ -85,6 +85,13 @@ Add a workflow like this to **your own repo** (not this one) to open a PR agains
 `aicraft-sdk/harnesslens`'s `leaderboard/submissions/` directory whenever you push to
 `main`:
 
+> `@ai-craft/harnesslens` is currently **private** under the `@ai-craft` npm org while it's
+> being tested (see the Quickstart note in [`../README.md`](../README.md)). The `npx --yes
+> @ai-craft/harnesslens` step below requires npm auth as an `@ai-craft` org member, and this
+> snippet has no auth-setup step of its own — so, for now, **only `@ai-craft` org members can
+> complete this flow**. External submitters will get an auth failure (403/404) until the
+> package is published publicly.
+
 ```yaml
 # .github/workflows/harnesslens-submit.yml (add to YOUR repo — not this one)
 name: Submit harnesslens score to leaderboard
@@ -96,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npx --yes harnesslens --json > /tmp/report.json
+      - run: npx --yes @ai-craft/harnesslens --json > /tmp/report.json
       - name: Build submission JSON
         run: |
           node -e '
