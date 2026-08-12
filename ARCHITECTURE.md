@@ -92,20 +92,23 @@ separate, externally-consumed `craftflow-public` repo and cannot depend on an un
 ai-craft-specific package without breaking for anyone using craftflow outside this monorepo.
 
 Two pieces of what was originally an open-ended "badge / certification system" idea are no
-longer unscoped speculation — they have a concrete, in-progress implementation plan in this
-same initiative: a data-driven NIST AI RMF / OWASP Agentic AI Top 10 crosswalk
-(`src/framework-mappings.ts`, `Report.frameworkMapping`, surfaced in all three renderers — see
-the Positioning note above) is now built, and a static, self-reported leaderboard
-(`tools/harness-audit-leaderboard` — PR-based submissions, GitHub Actions-published to GitHub
-Pages) is scoped for a later phase of this same plan.
+longer speculation — both have shipped as part of this same initiative: a data-driven NIST AI
+RMF / OWASP Agentic AI Top 10 crosswalk (`src/framework-mappings.ts`, `Report.frameworkMapping`,
+surfaced in all three renderers — see the Positioning note above), and a static, self-reported
+leaderboard (`tools/harness-audit-leaderboard` — see that package's own README) built
+end-to-end: allowlist submission parsing with dedup/staleness aggregation, `.textContent`-only
+rendering, a CLI writing `site-data.json`, PR-based submission (never direct-commit), and a
+`.github/workflows/rebuild-leaderboard.yml` pipeline that builds and publishes the static site
+to GitHub Pages on a schedule, on `submissions/**` changes, and on manual dispatch.
 
 What remains genuinely open, with no design decisions made:
 
-- **A live hosted backend.** This package (and the planned static leaderboard) are
-  zero-network, filesystem/build-time-only by design (see "Determinism/safety guarantees"
-  above) — a dynamic, queryable service (signed/verifiable attestations, a live submission API,
-  tiered public/private scoring) would be a new surface, not an extension of the existing
-  scorer or the static leaderboard.
+- **A live hosted backend.** This package's scorer is zero-network, filesystem/build-time-only
+  by design (see "Determinism/safety guarantees" above), and the static leaderboard's own
+  generator (`tools/harness-audit-leaderboard`) follows the same rule — publishing is CI-driven
+  and PR-gated, never a live write path. A dynamic, queryable service (signed/verifiable
+  attestations, a live submission API, tiered public/private scoring) would be a new surface,
+  not an extension of the existing scorer or the static leaderboard.
 - **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
   "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
   pass/fail mechanism against NIST AI RMF or OWASP exists, and building one is a distinct,
@@ -118,11 +121,11 @@ What remains genuinely open, with no design decisions made:
   though craftflow demonstrably has 11 agents, 24 skills, and 24 hooks. The core/ai-craft checks
   assume repo-root conventions (root `AGENTS.md`, root `.claude/skills/`, root `.github/
   workflows/`) that a nested plugin bundle intentionally doesn't follow at its own top level.
-  Any future badge/leaderboard surface needs either a "plugin-shaped repo" detection mode or a
-  configurable path-root remap before it can score something like craftflow fairly — shipping
-  one without this would actively mislead (a low score sitting next to prose describing a
-  mature toolset). No fix attempted here; flagging so the future PLAN scopes it explicitly
-  rather than rediscovering it.
+  Before a plugin-shaped repo like this one could accurately appear on a badge or the
+  leaderboard, it needs either a "plugin-shaped repo" detection mode or a configurable
+  path-root remap — submitting one as-is would actively mislead (a low score sitting next to
+  prose describing a mature toolset). No fix attempted here; flagging so the future PLAN scopes
+  it explicitly rather than rediscovering it.
 
 Capturing the still-open ideas here so they aren't lost — not a commitment to build them.
 
