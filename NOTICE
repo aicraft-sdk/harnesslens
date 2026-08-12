@@ -1,4 +1,4 @@
-@ai-craft/harness-audit
+harnesslens
 
 Portions of this package (the scoring engine types, scanner, scorer, report
 renderers, the 36 `core` check pack checks, and the harness-detection support
