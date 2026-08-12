@@ -157,6 +157,25 @@ describe('parseSubmission', () => {
     }
   });
 
+  it('rejects a submission whose dimensions[] contains a "__proto__"/"constructor"/"prototype" id (defense-in-depth against prototype-chain lookups downstream, REM-FIX)', () => {
+    // dimension.id was previously restricted only to "is a string" — never checked against the
+    // same __proto__/constructor/prototype guard already applied to frameworkMapping keys. A
+    // "__proto__" dimension id lets a plain-object bracket lookup on frameworkMapping fall
+    // through the prototype chain in render.ts. Fail the whole submission closed, matching
+    // dimensions[]'s existing fail-closed posture for malformed entries.
+    const result = parseSubmission(
+      {
+        ...VALID,
+        dimensions: [{ ...VALID.dimensions[0], id: '__proto__' }],
+      },
+      'proto-dimension-id.json',
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.reason).toContain('dimensions');
+    }
+  });
+
   it('accepts a frameworkMapping entry whose key is a dimension id no longer present in the current registry, as opaque display data (edge-case catalog #13)', () => {
     // parseSubmission has no registry cross-check — frameworkMapping keys are shape-validated
     // display metadata, never validated against harness-audit's live dimension list. A stale

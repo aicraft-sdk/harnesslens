@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runCli } from './cli.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,5 +33,40 @@ describe('runCli', () => {
   it('never fails the whole build on a malformed submission file', () => {
     const code = runCli([FIXTURES, outDir]);
     expect(code).toBe(0); // FIXTURES includes malformed-missing-field.json — must not abort.
+  });
+
+  it('reports a distinct "JSON parse error" reason for a file with invalid JSON syntax, not the generic shape-failure reason (edge-case catalog #2, REM-FIX)', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const code = runCli([FIXTURES, outDir]);
+      expect(code).toBe(0); // still never fails the whole build.
+      const messages = stderrSpy.mock.calls.map((call) => String(call[0]));
+      const invalidJsonMessage = messages.find((m) => m.includes('invalid-json-syntax.json'));
+      expect(invalidJsonMessage).toBeDefined();
+      expect(invalidJsonMessage).toContain('JSON parse error');
+      expect(invalidJsonMessage).not.toContain('submission is not a JSON object');
+    } finally {
+      stderrSpy.mockRestore();
+    }
+  });
+
+  it('returns a clean non-zero exit instead of throwing when the submissions directory does not exist (REM-FIX)', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const missingDir = path.join(outDir, 'does-not-exist');
+    try {
+      let code: number | undefined;
+      let thrown: unknown;
+      try {
+        code = runCli([missingDir, outDir]);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeUndefined();
+      expect(code).not.toBe(0);
+      const messages = stderrSpy.mock.calls.map((call) => String(call[0]));
+      expect(messages.some((m) => m.startsWith('harness-audit-leaderboard: '))).toBe(true);
+    } finally {
+      stderrSpy.mockRestore();
+    }
   });
 });

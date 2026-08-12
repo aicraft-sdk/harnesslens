@@ -46,6 +46,11 @@ export function parseSubmission(raw: unknown, file: string): ParseResult {
     if (
       typeof d !== 'object' || d === null ||
       typeof (d as Record<string, unknown>)['id'] !== 'string' ||
+      // Defense-in-depth: matches the same guard already applied to frameworkMapping keys.
+      // dimension.id is later used as a bracket-lookup key against a plain object in
+      // render.ts's mappingSummary() — "__proto__"/"constructor"/"prototype" would fall through
+      // the prototype chain there instead of missing cleanly.
+      ['__proto__', 'constructor', 'prototype'].includes((d as Record<string, unknown>)['id'] as string) ||
       typeof (d as Record<string, unknown>)['title'] !== 'string' ||
       !isFiniteNumber((d as Record<string, unknown>)['earned']) ||
       !isFiniteNumber((d as Record<string, unknown>)['max']) ||

@@ -16,7 +16,13 @@ function mappingSummary(entry: LeaderboardEntry): string {
   // surfaced in the table, matching P4's requirement that a submission-derived title string
   // (e.g. an XSS payload) shows up somewhere as visible text — still .textContent-only.
   const parts = entry.dimensions.map((dimension) => {
-    const mapping = entry.frameworkMapping[dimension.id];
+    // Object.hasOwn guard: a plain-object bracket lookup for a dimension.id like "__proto__"
+    // falls through the prototype chain and returns a truthy inherited value (Object.prototype)
+    // instead of undefined, even with no matching own key — crashing mapping.nistFunctions.join
+    // below and blanking the whole table. Only trust an own key.
+    const mapping = Object.hasOwn(entry.frameworkMapping, dimension.id)
+      ? entry.frameworkMapping[dimension.id]
+      : undefined;
     const frameworkText = mapping
       ? `${mapping.nistFunctions.join('/')}${mapping.owaspIds.length ? ` (${mapping.owaspIds.join(',')})` : ''}`
       : '';
