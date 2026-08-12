@@ -22,7 +22,7 @@ inputs:
     required: false
     default: ''
   version:
-    description: 'Version of harnesslens to install (npm dist-tag or version).'
+    description: 'Version of @ai-craft/harnesslens to install (npm dist-tag or version).'
     required: false
     default: 'latest'
 
@@ -52,7 +52,7 @@ runs:
         fi
 
         set +e
-        OUTPUT="$(npx --yes "harnesslens@${{ inputs.version }}" "${ARGS[@]}")"
+        OUTPUT="$(npx --yes "@ai-craft/harnesslens@${{ inputs.version }}" "${ARGS[@]}")"
         STATUS=$?
         set -e
 

@@ -33,7 +33,7 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md#the-extension-model) for the full exte
 Minimal example:
 
 ```ts
-import { defineCheck, definePack } from 'harnesslens';
+import { defineCheck, definePack } from '@ai-craft/harnesslens';
 
 const myCheck = defineCheck({
   id: 'CUST-01',

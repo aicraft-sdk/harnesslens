@@ -9,15 +9,19 @@ GitHub Action, and a multi-repo runner for fleet-wide comparisons.
 
 ## Quickstart
 
+> This package is currently **private** under the `@ai-craft` npm org while it's being tested;
+> installing it requires npm auth as an org member (`npm login` with an account that has read
+> access to `@ai-craft`).
+
 ```bash
 # Install (as a devDependency, or run ad hoc via npx)
-pnpm add -D harnesslens
+pnpm add -D @ai-craft/harnesslens
 
 # Audit the current directory
-npx harnesslens
+npx @ai-craft/harnesslens
 
 # Audit a specific repo
-npx harnesslens /path/to/repo
+npx @ai-craft/harnesslens /path/to/repo
 ```
 
 ## Positioning
@@ -160,7 +164,7 @@ import {
   renderTerminal,
   renderMarkdown,
   renderBadge,
-} from 'harnesslens';
+} from '@ai-craft/harnesslens';
 
 // Lowest-level: build a ScanContext yourself, then score it.
 const ctx = createScanContext('/path/to/repo');
@@ -217,7 +221,7 @@ missing. The ladder is fully config-overridable via `.harness-audit.json`'s `lev
 ## Writing a custom check/pack
 
 ```ts
-import { defineCheck, definePack } from 'harnesslens';
+import { defineCheck, definePack } from '@ai-craft/harnesslens';
 
 const hasRunbook = defineCheck({
   id: 'CUST-01',
@@ -250,14 +254,14 @@ in alongside `core`/`ai-craft` (see [Config file](#config-file)).
 ```
 
 Inputs: `root` (default `.`), `min-level` (fails the step when below this level), `badge`
-(path to write an SVG badge), `version` (npm dist-tag/version of `harnesslens` to
+(path to write an SVG badge), `version` (npm dist-tag/version of `@ai-craft/harnesslens` to
 install, default `latest`). Outputs: `level` (resolved maturity level index) and
 `score-percent`. See `action/action.yml`.
 
 ## Multi-repo usage
 
 ```ts
-import { runMultiRepoAudit, loadRepoManifest } from 'harnesslens';
+import { runMultiRepoAudit, loadRepoManifest } from '@ai-craft/harnesslens';
 
 const entries = loadRepoManifest('./repos.json'); // { "repos": [{ "id", "path" }] }
 const result = await runMultiRepoAudit(entries);
