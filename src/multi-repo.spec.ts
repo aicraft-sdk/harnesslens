@@ -93,7 +93,7 @@ describe('loadRepoManifest', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-manifest-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-manifest-'));
   });
 
   afterEach(() => {

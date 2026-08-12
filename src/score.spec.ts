@@ -21,7 +21,7 @@ describe('CheckResult.docsUrl', () => {
 
     const hyg01 = report.checks.find((c) => c.id === 'HYG-01');
     expect(hyg01).toBeDefined();
-    expect(hyg01!.docsUrl).toBe('https://github.com/aicraft-sdk/harness-audit#hyg-01');
+    expect(hyg01!.docsUrl).toBe('https://github.com/aicraft-sdk/harnesslens#hyg-01');
   });
 
   it('applies the DOCS_BASE_URL + lowercased-id anchor format to every check in a real report', () => {

@@ -6,7 +6,7 @@ branding:
   color: 'green'
 
 # Runs after checkout — this action does not check out the repository
-# itself. Wraps `harness-audit`'s CLI (`--root`/`--json`/`--min-level`/
+# itself. Wraps `harnesslens`'s CLI (`--root`/`--json`/`--min-level`/
 # `--badge`); no scoring logic lives here, only CLI/Action wiring.
 inputs:
   root:

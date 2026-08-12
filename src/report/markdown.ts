@@ -12,7 +12,7 @@ import type { Report } from '../types.js';
 
 export function renderMarkdown(report: Report): string {
   const lines: string[] = [];
-  lines.push(`# Harness Audit Report`);
+  lines.push(`# HarnessLens Report`);
   lines.push('');
   lines.push(`**Maturity level:** L${report.level.index} · ${report.level.name}`);
   lines.push(`**Maturity score:** ${report.score.earned}/${report.score.max} (${report.score.percent}%)`);

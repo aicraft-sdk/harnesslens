@@ -118,7 +118,7 @@ describe('loadHarnessAuditConfigFile', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-config-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-config-'));
   });
 
   afterEach(() => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `harness-audit` CLI — Phase 4. Wraps `runAudit` (api.ts) plus the 3 report
+ * `harnesslens` CLI — Phase 4. Wraps `runAudit` (api.ts) plus the 3 report
  * renderers ported in Phase 1 with a manual-argv parser, following this
  * monorepo's established `main(argv, io)` convention (see
  * `packages/repo-conductor/src/cli/main.ts`). No commander dependency.

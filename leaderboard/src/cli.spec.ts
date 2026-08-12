@@ -12,7 +12,7 @@ describe('runCli', () => {
   let outDir: string;
 
   beforeEach(() => {
-    outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-leaderboard-cli-'));
+    outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-leaderboard-cli-'));
   });
 
   afterEach(() => {
@@ -64,7 +64,7 @@ describe('runCli', () => {
       expect(thrown).toBeUndefined();
       expect(code).not.toBe(0);
       const messages = stderrSpy.mock.calls.map((call) => String(call[0]));
-      expect(messages.some((m) => m.startsWith('harness-audit-leaderboard: '))).toBe(true);
+      expect(messages.some((m) => m.startsWith('harnesslens-leaderboard: '))).toBe(true);
     } finally {
       stderrSpy.mockRestore();
     }

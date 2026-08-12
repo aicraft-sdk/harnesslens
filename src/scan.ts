@@ -78,10 +78,10 @@ function assertReadableRoot(root: string): void {
   try {
     stat = fs.statSync(root);
   } catch {
-    throw new Error(`harness-audit: repository root not found or not readable: ${root}`);
+    throw new Error(`harnesslens: repository root not found or not readable: ${root}`);
   }
   if (!stat.isDirectory()) {
-    throw new Error(`harness-audit: repository root not found or not readable: ${root}`);
+    throw new Error(`harnesslens: repository root not found or not readable: ${root}`);
   }
 }
 

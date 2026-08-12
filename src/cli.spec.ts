@@ -30,7 +30,7 @@ function makeIO() {
   };
 }
 
-describe('harness-audit CLI — default terminal output', () => {
+describe('harnesslens CLI — default terminal output', () => {
   it('renders a terminal report for --root <fixture> and exits 0', async () => {
     const { io, stdoutLines } = makeIO();
 
@@ -38,7 +38,7 @@ describe('harness-audit CLI — default terminal output', () => {
 
     expect(result.exitCode).toBe(0);
     const output = stdoutLines.join('');
-    expect(output).toContain('harness-audit v');
+    expect(output).toContain('harnesslens v');
     expect(output).toContain('Maturity:');
   });
 
@@ -65,7 +65,7 @@ describe('harness-audit CLI — default terminal output', () => {
   });
 
   it('errors with exit 1 and a message on stderr when .harness-audit.json is invalid JSON', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-cli-badconfig-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-cli-badconfig-'));
     try {
       fs.writeFileSync(path.join(dir, '.harness-audit.json'), '{ not valid json');
       const { io, stderrLines } = makeIO();
@@ -80,7 +80,7 @@ describe('harness-audit CLI — default terminal output', () => {
   });
 });
 
-describe('harness-audit CLI — --json', () => {
+describe('harnesslens CLI — --json', () => {
   it('prints a valid JSON Report with the expected top-level shape', async () => {
     const { io, stdoutLines } = makeIO();
 
@@ -88,29 +88,29 @@ describe('harness-audit CLI — --json', () => {
 
     expect(result.exitCode).toBe(0);
     const report = JSON.parse(stdoutLines.join(''));
-    expect(report.tool).toEqual({ name: 'harness-audit', version: expect.any(String) });
+    expect(report.tool).toEqual({ name: 'harnesslens', version: expect.any(String) });
     expect(typeof report.level.index).toBe('number');
     expect(typeof report.score.percent).toBe('number');
     expect(Array.isArray(report.checks)).toBe(true);
   });
 });
 
-describe('harness-audit CLI — --md', () => {
+describe('harnesslens CLI — --md', () => {
   it('prints a markdown report starting with the report heading', async () => {
     const { io, stdoutLines } = makeIO();
 
     const result = await main(['--root', LEVEL_2_FIXTURE, '--md'], io);
 
     expect(result.exitCode).toBe(0);
-    expect(stdoutLines.join('')).toContain('# Harness Audit Report');
+    expect(stdoutLines.join('')).toContain('# HarnessLens Report');
   });
 });
 
-describe('harness-audit CLI — --badge', () => {
+describe('harnesslens CLI — --badge', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-cli-badge-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-cli-badge-'));
   });
 
   afterEach(() => {
@@ -139,7 +139,7 @@ describe('harness-audit CLI — --badge', () => {
   });
 });
 
-describe('harness-audit CLI — --min-level', () => {
+describe('harnesslens CLI — --min-level', () => {
   it('exits 0 when --min-level is at or below the report level', async () => {
     const { io } = makeIO();
 
@@ -157,11 +157,11 @@ describe('harness-audit CLI — --min-level', () => {
   });
 });
 
-describe('harness-audit CLI — multi subcommand', () => {
+describe('harnesslens CLI — multi subcommand', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-cli-multi-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-cli-multi-'));
   });
 
   afterEach(() => {
@@ -211,7 +211,7 @@ describe('harness-audit CLI — multi subcommand', () => {
   });
 });
 
-describe('harness-audit CLI — --help', () => {
+describe('harnesslens CLI — --help', () => {
   it('prints usage and exits 0', async () => {
     const { io, stdoutLines } = makeIO();
 

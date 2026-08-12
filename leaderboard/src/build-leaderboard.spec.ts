@@ -1,4 +1,4 @@
-// tools/harness-audit-leaderboard/src/build-leaderboard.spec.ts
+// leaderboard/src/build-leaderboard.spec.ts
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';

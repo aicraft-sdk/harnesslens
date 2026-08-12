@@ -19,7 +19,7 @@ export function runCli(argv: string[]): number {
       .sort(); // deterministic input order — see P5.
   } catch (err) {
     process.stderr.write(
-      `harness-audit-leaderboard: cannot read submissions directory ${submissionsDir}: ${(err as Error).message}\n`,
+      `harnesslens-leaderboard: cannot read submissions directory ${submissionsDir}: ${(err as Error).message}\n`,
     );
     return 1;
   }
@@ -48,7 +48,7 @@ export function runCli(argv: string[]): number {
 
   const { valid, skipped } = buildLeaderboard(files);
   for (const { file, reason } of [...preParseSkips, ...skipped]) {
-    process.stderr.write(`harness-audit-leaderboard: skipped ${file}: ${reason}\n`);
+    process.stderr.write(`harnesslens-leaderboard: skipped ${file}: ${reason}\n`);
   }
 
   try {
@@ -58,7 +58,7 @@ export function runCli(argv: string[]): number {
       JSON.stringify({ generatedAt: new Date().toISOString(), entries: valid }, null, 2),
     );
   } catch (err) {
-    process.stderr.write(`harness-audit-leaderboard: cannot write output to ${outDir}: ${(err as Error).message}\n`);
+    process.stderr.write(`harnesslens-leaderboard: cannot write output to ${outDir}: ${(err as Error).message}\n`);
     return 1;
   }
 

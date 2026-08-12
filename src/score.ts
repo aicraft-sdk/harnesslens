@@ -42,7 +42,7 @@ import type {
 export { LEVEL_NAMES, LEVEL_REQUIREMENTS, DEFAULT_LEVEL_REQUIREMENTS } from './level-requirements.js';
 export type { LevelRequirementSpec } from './types.js';
 
-export const DOCS_BASE_URL = 'https://github.com/aicraft-sdk/harness-audit';
+export const DOCS_BASE_URL = 'https://github.com/aicraft-sdk/harnesslens';
 export const TOOL_VERSION = '1.3.1';
 
 /** Default composition: the `core` pack only, no overrides — Phase 1's exact behavior. */
@@ -140,7 +140,7 @@ export function buildReportFromContext(
   }
 
   return {
-    tool: { name: 'harness-audit', version: TOOL_VERSION },
+    tool: { name: 'harnesslens', version: TOOL_VERSION },
     root: maturityCtx.root,
     truncated: maturityCtx.truncated || effectiveCtx.truncated,
     scopes: { maturity: ['repo'], effective: config.effectiveScopes },

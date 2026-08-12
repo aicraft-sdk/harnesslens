@@ -6,10 +6,10 @@ import { createScanContext } from './scan.js';
 
 describe('createScanContext — root readability', () => {
   it('throws a clear error when the root does not exist', () => {
-    const missingRoot = path.join(os.tmpdir(), 'harness-audit-does-not-exist-xyz');
+    const missingRoot = path.join(os.tmpdir(), 'harnesslens-does-not-exist-xyz');
 
     expect(() => createScanContext(missingRoot)).toThrow(
-      /harness-audit: repository root not found or not readable/,
+      /harnesslens: repository root not found or not readable/,
     );
   });
 
@@ -17,7 +17,7 @@ describe('createScanContext — root readability', () => {
     let dir: string;
 
     beforeEach(() => {
-      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-empty-'));
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-empty-'));
     });
 
     afterEach(() => {

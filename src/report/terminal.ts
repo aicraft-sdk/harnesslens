@@ -48,7 +48,7 @@ export function renderTerminal(report: Report): string {
   const lines: string[] = [];
   const levelPaint = LEVEL_COLOR[report.level.index] ?? red;
   lines.push('');
-  lines.push(bold(`  harness-audit v${report.tool.version}`) + dim(`  ${report.root}`));
+  lines.push(bold(`  harnesslens v${report.tool.version}`) + dim(`  ${report.root}`));
   lines.push('');
   if (report.truncated) {
     lines.push(

@@ -1,5 +1,5 @@
 /**
- * Data-driven crosswalk from harness-audit dimensions to NIST AI RMF functions
+ * Data-driven crosswalk from harnesslens dimensions to NIST AI RMF functions
  * and OWASP's Agentic AI Top 10 (2026). "Maps to" / "aligned to" language only
  * — never an accreditation or formal-compliance claim (see
  * no-certification-claims.spec.ts).

@@ -107,7 +107,7 @@ export async function runMultiRepoAudit(entries: RepoEntry[]): Promise<MultiRepo
   });
 
   return {
-    tool: { name: 'harness-audit', version: TOOL_VERSION },
+    tool: { name: 'harnesslens', version: TOOL_VERSION },
     results,
     rollup: computeRollup(results),
   };

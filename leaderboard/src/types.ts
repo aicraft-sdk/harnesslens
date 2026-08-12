@@ -1,4 +1,4 @@
-/** Submission/leaderboard data shapes for @ai-craft/harness-audit-leaderboard. Internal, not published. */
+/** Submission/leaderboard data shapes for harnesslens-leaderboard. Internal, not published. */
 
 export const STALE_THRESHOLD_DAYS = 90;
 

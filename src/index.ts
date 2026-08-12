@@ -2,7 +2,7 @@
 // Phase 2: config-driven pack composition (`composeRegistry`, `runAudit`).
 // Phase 3: the `ai-craft` company check pack (craftflow-plugin detection,
 // NX/changesets/governance/spec-traceability, hygiene templates).
-// Phase 4: `harness-audit` CLI (`src/cli.ts`, `bin` entry), GitHub Action
+// Phase 4: `harnesslens` CLI (`src/cli.ts`, `bin` entry), GitHub Action
 // (`action/action.yml`), and the standalone multi-repo runner below. This
 // closes docs/ai/specs/0011-harness-audit.md's scope.
 

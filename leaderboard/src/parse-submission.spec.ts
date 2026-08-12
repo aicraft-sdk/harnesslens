@@ -1,4 +1,4 @@
-// tools/harness-audit-leaderboard/src/parse-submission.spec.ts
+// leaderboard/src/parse-submission.spec.ts
 import { describe, expect, it } from 'vitest';
 import { parseSubmission } from './parse-submission.js';
 
@@ -178,7 +178,7 @@ describe('parseSubmission', () => {
 
   it('accepts a frameworkMapping entry whose key is a dimension id no longer present in the current registry, as opaque display data (edge-case catalog #13)', () => {
     // parseSubmission has no registry cross-check — frameworkMapping keys are shape-validated
-    // display metadata, never validated against harness-audit's live dimension list. A stale
+    // display metadata, never validated against harnesslens's live dimension list. A stale
     // key from registry drift must survive as-is rather than crashing or being silently dropped.
     const result = parseSubmission(
       {

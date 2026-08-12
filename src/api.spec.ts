@@ -106,7 +106,7 @@ describe('runAudit — .harness-audit.json file resolution', () => {
   let dir: string;
 
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-runaudit-'));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-runaudit-'));
   });
 
   afterEach(() => {
@@ -203,7 +203,7 @@ describe('runAudit — "levels" config override', () => {
   });
 
   it('rejects a malformed "levels" config loaded from .harness-audit.json (not exactly 4 entries)', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harness-audit-levels-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-levels-'));
     try {
       fs.writeFileSync(
         path.join(dir, '.harness-audit.json'),
