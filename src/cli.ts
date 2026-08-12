@@ -25,21 +25,29 @@ export function runCli(argv: string[]): number {
   }
 
   const files: RawSubmissionFile[] = [];
-  // JSON-syntax failures are surfaced with their own reason here (distinct from parseSubmission's
-  // generic shape-failure reason) instead of being downgraded to `raw: null` and re-diagnosed
-  // downstream — edge-case catalog #2.
-  const jsonSyntaxSkips: SkippedEntry[] = [];
+  // Read and JSON-syntax failures are surfaced with their own reasons here (distinct from
+  // parseSubmission's generic shape-failure reason) instead of being downgraded to `raw: null`
+  // and re-diagnosed downstream — edge-case catalog #2. A single unreadable file (permission
+  // denied, EISDIR from a directory literally named *.json, deleted between readdirSync and
+  // readFileSync, a broken symlink) must never crash the whole rebuild — REM-FIX round 2.
+  const preParseSkips: SkippedEntry[] = [];
   for (const file of filenames) {
-    const text = fs.readFileSync(path.join(submissionsDir, file), 'utf8');
+    let text: string;
+    try {
+      text = fs.readFileSync(path.join(submissionsDir, file), 'utf8');
+    } catch (err) {
+      preParseSkips.push({ file, reason: `cannot read file: ${(err as Error).message}` });
+      continue;
+    }
     try {
       files.push({ file, raw: JSON.parse(text) as unknown });
     } catch (err) {
-      jsonSyntaxSkips.push({ file, reason: `JSON parse error: ${(err as Error).message}` });
+      preParseSkips.push({ file, reason: `JSON parse error: ${(err as Error).message}` });
     }
   }
 
   const { valid, skipped } = buildLeaderboard(files);
-  for (const { file, reason } of [...jsonSyntaxSkips, ...skipped]) {
+  for (const { file, reason } of [...preParseSkips, ...skipped]) {
     process.stderr.write(`harness-audit-leaderboard: skipped ${file}: ${reason}\n`);
   }
 

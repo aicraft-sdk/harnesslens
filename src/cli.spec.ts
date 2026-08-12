@@ -69,4 +69,29 @@ describe('runCli', () => {
       stderrSpy.mockRestore();
     }
   });
+
+  it('skips a file that cannot be read (e.g. EISDIR from a directory literally named *.json) instead of crashing the whole rebuild (REM-FIX round 2)', () => {
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      let code: number | undefined;
+      let thrown: unknown;
+      try {
+        code = runCli([FIXTURES, outDir]);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).toBeUndefined();
+      expect(code).toBe(0); // FIXTURES includes unreadable-directory.json — must not abort.
+      const dataPath = path.join(outDir, 'site-data.json');
+      const data = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+      expect(Array.isArray(data.entries)).toBe(true);
+      expect(data.entries.length).toBeGreaterThan(0);
+      const messages = stderrSpy.mock.calls.map((call) => String(call[0]));
+      const unreadableMessage = messages.find((m) => m.includes('unreadable-directory.json'));
+      expect(unreadableMessage).toBeDefined();
+      expect(unreadableMessage).toContain('cannot read file');
+    } finally {
+      stderrSpy.mockRestore();
+    }
+  });
 });
