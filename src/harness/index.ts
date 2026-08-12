@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `harness/index.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Harness module public exports (`harness/index.ts`). See NOTICE for
+ * third-party attribution.
  */
 
 export * from './collectors.js';

@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `checks/ci.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * CI dimension checks (`checks/ci.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import type { Check, ScanContext } from '../../types.js';

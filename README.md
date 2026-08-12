@@ -3,11 +3,9 @@
 Extensible AI-harness maturity scorer for auditing company repos — how well does each repo
 equip an AI coding agent with context, guardrails, and feedback loops?
 
-Forked from [`paladini/harness-score`](https://github.com/paladini/harness-score) (MIT) and
-extended for company-wide use: config-driven check-pack composition (enable/disable/reweight
+Built for company-wide use: config-driven check-pack composition (enable/disable/reweight
 checks, add custom dimensions), a company-conventions check pack (`ai-craft`), a CLI, a
-GitHub Action, and a multi-repo runner for fleet-wide comparisons. See `NOTICE` for upstream
-attribution.
+GitHub Action, and a multi-repo runner for fleet-wide comparisons.
 
 ## Quickstart
 
@@ -272,11 +270,8 @@ parallel and isolated — one bad path or malformed config fails only that entry
 
 ## License / attribution
 
-This package is MIT-licensed — see `LICENSE`. Portions (the scoring engine, scanner, the 36
-`core` pack checks, and report renderers) are ported from
-[`paladini/harness-score`](https://github.com/paladini/harness-score) (MIT, Copyright (c)
-2026 Fernando Paladini) — see `NOTICE` and `THIRD_PARTY_LICENSES/harness-score-LICENSE` for
-full attribution.
+This package is MIT-licensed — see `LICENSE`. See `NOTICE` and `THIRD_PARTY_LICENSES/` for
+third-party attribution.
 
 ## More
 

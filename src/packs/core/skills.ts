@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `checks/skills.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Skills dimension checks (`checks/skills.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import { collectCommands, collectSkills, summarizeArtifacts } from '../../harness/index.js';

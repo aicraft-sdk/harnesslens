@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `harness/registry.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Tool identifier registry (`harness/registry.ts`). See NOTICE for
+ * third-party attribution.
  */
 
 /** Stable tool identifiers surfaced in scan reports. */

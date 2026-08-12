@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `util.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Shared parsing/formatting utilities. See NOTICE for third-party
+ * attribution.
  */
 
 const BLOCK_SCALAR_RE = /^([|>])([+-]?)$/;

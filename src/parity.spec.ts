@@ -14,8 +14,8 @@ const LEVEL_FIXTURES = [
   { dir: 'level-4', expectedLevel: 4 },
 ];
 
-describe('core pack parity with upstream harness-score fixtures', () => {
-  it('exposes exactly the 36 upstream checks in the core pack', () => {
+describe('core pack parity with reference fixtures', () => {
+  it('exposes exactly the 36 checks in the core pack', () => {
     expect(corePack.id).toBe('core');
     expect(corePack.checks).toHaveLength(36);
   });

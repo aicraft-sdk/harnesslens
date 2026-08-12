@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `harness/mcp.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * MCP server detection (`harness/mcp.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import type { ScanContext } from '../types.js';

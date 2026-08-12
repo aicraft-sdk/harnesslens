@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `checks/sensors.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Sensors dimension checks (`checks/sensors.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import type { Check, ScanContext } from '../../types.js';

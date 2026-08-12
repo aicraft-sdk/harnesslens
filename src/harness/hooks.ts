@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `harness/hooks.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Hook configuration normalization (`harness/hooks.ts`). See NOTICE for
+ * third-party attribution.
  */
 
 import type { ScanContext } from '../types.js';

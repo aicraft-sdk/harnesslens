@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `harness/collectors.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Harness artifact collectors (`harness/collectors.ts`). See NOTICE for
+ * third-party attribution.
  */
 
 import type { ScanContext } from '../types.js';

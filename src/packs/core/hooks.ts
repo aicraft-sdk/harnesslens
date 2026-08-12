@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `checks/hooks.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Hooks dimension checks (`checks/hooks.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import { hookCommandPathsResolve, readNormalizedHooks } from '../../harness/hooks.js';

@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `checks/context.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Context dimension checks (`checks/context.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import { countRuleScopes, ruleHasValidFrontmatter } from '../../harness/frontmatter.js';

@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `checks/agents.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Agents dimension checks (`checks/agents.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import { collectSubagents, summarizeArtifacts } from '../../harness/index.js';

@@ -1,7 +1,7 @@
 /**
- * The `core` check pack — the 36 checks ported from harness-score
- * (https://github.com/paladini/harness-score, MIT — see NOTICE), reorganized
- * one file per dimension (mirroring upstream's `checks/{context,skills,...}.ts`
+ * The `core` check pack — the 36 checks in this package's original core
+ * check catalog. See NOTICE for third-party attribution. Organized
+ * one file per dimension (`checks/{context,skills,...}.ts`
  * layout) and assembled here into a single `CheckPack`-shaped object via
  * `definePack`/`defineCheck` (see `../../define.js`).
  *

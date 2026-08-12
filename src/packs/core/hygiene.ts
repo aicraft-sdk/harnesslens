@@ -1,6 +1,6 @@
 /**
- * Ported verbatim (contract-identical) from harness-score's `checks/hygiene.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Hygiene dimension checks (`checks/hygiene.ts`). See NOTICE for third-party
+ * attribution.
  */
 
 import { collectHarnessTextFiles } from '../../harness/collectors.js';

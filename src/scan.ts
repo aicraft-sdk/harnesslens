@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `scan.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Filesystem scanner — walks a repo and builds the in-memory `ScanContext`
+ * used by every check. See NOTICE for third-party attribution.
  */
 
 import * as fs from 'node:fs';

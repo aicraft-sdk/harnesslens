@@ -131,8 +131,8 @@ Capturing the still-open ideas here so they aren't lost — not a commitment to 
 
 ## The two built-in packs
 
-- **`core`** (`src/packs/core/`) — the 36 checks ported from upstream `harness-score`,
-  reorganized one file per dimension-ish grouping (`context.ts`, `skills.ts`, `agents.ts`,
+- **`core`** (`src/packs/core/`) — the 36 checks in this package's original core check
+  catalog, organized one file per dimension-ish grouping (`context.ts`, `skills.ts`, `agents.ts`,
   `hooks.ts`, `sensors.ts`, `ci.ts`, `hygiene.ts`) and assembled into a single `corePack` via
   `definePack`. `ALL_CHECKS` remains exported as a backward-compatible alias for
   `corePack.checks`.
@@ -164,16 +164,16 @@ without that flag. The multi-repo runner (`src/multi-repo.ts`) upholds the same 
 explicitly as an exit criterion: no `Date.now()`/random ids/unstable key ordering anywhere in
 that file, so auditing the same set of repo paths twice produces byte-identical JSON output.
 
-## Why fork instead of depend on upstream
+## Why a config-driven registry
 
-`harness-score` is a well-scoped, single-purpose CLI tool with a hardcoded check catalog.
-Auditing a fleet of company repos needs three things upstream doesn't offer as a library:
-config-driven pack composition (enable/disable/reweight checks per repo, add custom
-dimensions), a place to encode company-specific conventions (NX/changesets, AI-First
-governance, and — critically — non-repo-root plugin-harness detection, which upstream's
-detection logic structurally cannot see), and a multi-repo rollup for comparing repos
-fleet-wide. None of these are reasonably expressible as configuration on top of upstream's
-existing single-pack, repo-root-only design; forking and building the pack/registry extension
-layer on top (`registry.ts`, `config.ts`, `define.ts`) was the smallest change that made this
-package's own checks (`ai-craft`) and any future company packs first-class citizens rather
-than patches carried against someone else's CLI.
+A well-scoped, single-purpose CLI tool with a hardcoded check catalog isn't enough here.
+Auditing a fleet of company repos needs three things a single-pack, repo-root-only,
+hardcoded-catalog design doesn't offer as a library: config-driven pack composition
+(enable/disable/reweight checks per repo, add custom dimensions), a place to encode
+company-specific conventions (NX/changesets, AI-First governance, and — critically —
+non-repo-root plugin-harness detection, which a repo-root-only detection design structurally
+cannot see), and a multi-repo rollup for comparing repos fleet-wide. None of these are
+reasonably expressible as configuration on top of a single-pack, repo-root-only design;
+building the pack/registry extension layer (`registry.ts`, `config.ts`, `define.ts`) was the
+smallest change that made this package's own checks (`ai-craft`) and any future company packs
+first-class citizens rather than patches carried against someone else's CLI.

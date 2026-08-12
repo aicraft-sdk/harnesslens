@@ -1,7 +1,7 @@
 /**
  * The `ai-craft` company check pack — general-purpose checks for company
  * conventions this monorepo's own manual audit surfaced as gaps in
- * harness-score's repo-root-only detection: a plugin-delivered AI harness
+ * the `core` pack's repo-root-only detection: a plugin-delivered AI harness
  * (the headline false-negative fix), NX/changesets release conventions,
  * AI-First governance + spec traceability, and two hygiene template gaps.
  *

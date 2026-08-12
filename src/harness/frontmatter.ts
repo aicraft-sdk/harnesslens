@@ -1,6 +1,6 @@
 /**
- * Ported verbatim from harness-score's `harness/frontmatter.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Frontmatter parsing helpers (`harness/frontmatter.ts`). See NOTICE for
+ * third-party attribution.
  */
 
 import { parseFrontmatter } from '../util.js';

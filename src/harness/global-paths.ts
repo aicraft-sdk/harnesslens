@@ -1,8 +1,8 @@
 /**
- * Ported verbatim from harness-score's `harness/global-paths.ts`
- * (https://github.com/paladini/harness-score, MIT — see NOTICE).
+ * Global/extra-root path overlay handling (`harness/global-paths.ts`). See
+ * NOTICE for third-party attribution.
  * `ExtraRootEntry` now comes from `../scan-config.js` (Phase 1 local module)
- * rather than upstream's `config.ts` — see scan-config.ts for why.
+ * rather than a separate `config.ts` — see scan-config.ts for why.
  */
 
 import * as fs from 'node:fs';
