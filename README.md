@@ -40,6 +40,15 @@ This is a different axis than two adjacent tools worth naming explicitly:
   (llms.txt, schema.org, MCP server cards) — a content-discoverability signal, not a repo
   AI-harness/guardrail-maturity signal.
 
+## Leaderboard (experimental)
+
+An experimental, self-reported leaderboard aggregates `harness-audit --json` scores across
+participating repos into a static site. Every entry is self-reported by the scanned repo's
+own maintainers and has not been independently verified — treat it as a directional signal,
+not an authoritative ranking. See
+[`tools/harness-audit-leaderboard/README.md`](../../tools/harness-audit-leaderboard/README.md)
+for the submission schema and how to submit your repo's score.
+
 ## CLI usage
 
 ```
