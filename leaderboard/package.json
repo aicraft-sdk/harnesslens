@@ -14,7 +14,7 @@
     "@vitest/coverage-v8": "^3.0.5"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.lib.json",
+    "build": "tsc -p tsconfig.lib.json && node scripts/verify-dist.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck-spec": "tsc --noEmit -p tsconfig.spec.json"
