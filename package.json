@@ -33,6 +33,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.lib.json && node scripts/copy-assets.mjs && node scripts/verify-dist.mjs",
+    "pretest": "npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck-spec": "tsc --noEmit -p tsconfig.spec.json"
