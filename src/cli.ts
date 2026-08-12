@@ -258,7 +258,10 @@ function isMainModule(): boolean {
   try {
     if (typeof process.argv[1] !== 'string') return false;
     const here = fileURLToPath(import.meta.url);
-    return path.resolve(process.argv[1]) === path.resolve(here);
+    // process.argv[1] may be a bin symlink (npx/global/local npm installs all invoke the
+    // CLI through one) — path.resolve() does not dereference symlinks, so it must be
+    // realpath'd before comparing against the ESM-resolved (already-real) `here` path.
+    return fs.realpathSync(process.argv[1]) === here;
   } catch {
     return false;
   }
