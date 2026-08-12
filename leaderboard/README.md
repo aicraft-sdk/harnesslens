@@ -54,7 +54,7 @@ any other field is dropped by the allowlist parser and never reaches the leaderb
 
 | Field | Type | Example |
 |---|---|---|
-| `repoId` | `string` | `"ai-craft/harness-audit"` |
+| `repoId` | `string` | `"acme/widgets"` |
 | `score` | `number` | `82` |
 | `level` | `{ index: number; name: string }` | `{ "index": 3, "name": "Structured" }` |
 | `dimensions` | `Array<{ id: string; title: string; earned: number; max: number; percent: number }>` | `[{ "id": "context", "title": "Context Engineering", "earned": 8, "max": 10, "percent": 80 }]` |
