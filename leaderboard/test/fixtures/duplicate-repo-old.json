@@ -1,0 +1,13 @@
+{
+  "repoId": "acme/dup",
+  "score": 50,
+  "level": { "index": 2, "name": "Practicing" },
+  "dimensions": [
+    { "id": "context", "title": "Context & Guides", "earned": 2, "max": 5, "percent": 40 }
+  ],
+  "frameworkMapping": {
+    "context": { "nistFunctions": ["Govern"], "owaspIds": [] }
+  },
+  "commitSha": "aaaaaaa",
+  "scannedAt": "2026-07-01T00:00:00.000Z"
+}

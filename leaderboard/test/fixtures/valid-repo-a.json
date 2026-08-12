@@ -1,0 +1,14 @@
+{
+  "repoId": "acme/repo-a",
+  "score": 78,
+  "level": { "index": 3, "name": "Sensing" },
+  "dimensions": [
+    { "id": "context", "title": "Context & Guides", "earned": 4, "max": 5, "percent": 80 }
+  ],
+  "frameworkMapping": {
+    "context": { "nistFunctions": ["Govern"], "owaspIds": [] }
+  },
+  "commitSha": "a1b2c3d",
+  "scannedAt": "2026-08-11T00:00:00.000Z",
+  "_note": "scannedAt fixed at fixture-authoring time; will read as stale after ~90 days — regenerate before adding a non-staleness assertion against this fixture"
+}

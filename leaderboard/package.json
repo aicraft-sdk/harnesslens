@@ -1,0 +1,13 @@
+{
+  "name": "harness-audit-leaderboard",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Static-site leaderboard generator consuming @ai-craft/harness-audit --json submissions (self-reported via CI). Internal tooling — not published.",
+  "type": "module",
+  "engines": { "node": ">=22.0.0" },
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "happy-dom": "^15.0.0"
+  }
+}

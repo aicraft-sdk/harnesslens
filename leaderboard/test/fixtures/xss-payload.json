@@ -1,0 +1,13 @@
+{
+  "repoId": "acme/repo-e",
+  "score": 70,
+  "level": { "index": 3, "name": "Sensing" },
+  "dimensions": [
+    { "id": "context", "title": "<img src=x onerror=alert(1)>", "earned": 4, "max": 5, "percent": 80 }
+  ],
+  "frameworkMapping": {
+    "context": { "nistFunctions": ["Govern"], "owaspIds": [] }
+  },
+  "commitSha": "e5f6a7b",
+  "scannedAt": "2026-08-05T00:00:00.000Z"
+}

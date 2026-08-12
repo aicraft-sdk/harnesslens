@@ -1,0 +1,15 @@
+{
+  "__proto__": { "polluted": true },
+  "isAdmin": true,
+  "repoId": "acme/repo-d",
+  "score": 55,
+  "level": { "index": 2, "name": "Practicing" },
+  "dimensions": [
+    { "id": "context", "title": "Context & Guides", "earned": 3, "max": 5, "percent": 60 }
+  ],
+  "frameworkMapping": {
+    "context": { "nistFunctions": ["Govern"], "owaspIds": [] }
+  },
+  "commitSha": "d4e5f6a",
+  "scannedAt": "2026-08-05T00:00:00.000Z"
+}
