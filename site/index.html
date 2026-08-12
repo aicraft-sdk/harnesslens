@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>harness-audit leaderboard (experimental)</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <h1>harness-audit leaderboard</h1>
+  <p>
+    Self-reported AI-harness maturity scores, submitted via each repo's own CI. Not verified,
+    not a certification — "maps to"/"aligned to" NIST AI RMF and OWASP's Agentic AI Top 10 only.
+    Rows older than 90 days are flagged <strong>stale</strong>.
+  </p>
+  <div id="leaderboard-root">Loading…</div>
+  <script type="module">
+    const root = document.getElementById('leaderboard-root');
+    try {
+      const { renderLeaderboardTable } = await import('./render.js');
+      const res = await fetch('./site-data.json');
+      if (!res.ok) {
+        throw new Error(`site-data.json fetch failed: HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      if (!Array.isArray(data.entries)) {
+        throw new Error('site-data.json missing "entries" array');
+      }
+      renderLeaderboardTable(root, data.entries);
+    } catch (err) {
+      // Minimal error UI state: never leave the page stuck on "Loading…" — this is a static
+      // GitHub Pages site with no server-side error page, so client-side handling is the only
+      // feedback a visitor gets if site-data.json is missing/malformed (e.g. the build workflow
+      // hasn't run yet, or failed).
+      root.textContent = '';
+      const notice = document.createElement('p');
+      notice.className = 'error-notice';
+      notice.textContent = 'Unable to load leaderboard data. Please try again later.';
+      root.appendChild(notice);
+      console.error(err);
+    }
+  </script>
+</body>
+</html>
