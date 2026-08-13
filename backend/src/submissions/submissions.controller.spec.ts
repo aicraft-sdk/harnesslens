@@ -7,6 +7,11 @@ import type { CreateSubmissionDto } from './dto/create-submission.dto';
 import type { Submission } from './entities/submission.entity';
 import type { ReposService } from '../repos/repos.service';
 import type { Repo } from '../repos/entities/repo.entity';
+import type { SigningKey } from '../signing-keys/entities/signing-key.entity';
+
+// These DTOs never set `keyId`, so the signing-key repository is never consulted -- stubbed only
+// to satisfy SubmissionsService's constructor dependency.
+const signingKeysRepoStub = { findOneBy: vi.fn() } as unknown as Repository<SigningKey>;
 
 const repoUuid = '11111111-1111-1111-1111-111111111111';
 
@@ -36,7 +41,11 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
       findOrCreateForSubmission: vi.fn().mockResolvedValue({ id: repoUuid } as Repo),
     } as unknown as ReposService;
     const submissionsRepoStub = { insert: vi.fn() } as unknown as Repository<Submission>;
-    const controller = new SubmissionsController(reposServiceStub, new SubmissionsService(), submissionsRepoStub);
+    const controller = new SubmissionsController(
+      reposServiceStub,
+      new SubmissionsService(signingKeysRepoStub),
+      submissionsRepoStub,
+    );
 
     await expect(controller.create(dangerousDto)).rejects.toBeInstanceOf(BadRequestException);
     await expect(controller.create(dangerousDto)).rejects.toThrow(
@@ -53,7 +62,11 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
     const findOrCreateSpy = vi.fn().mockResolvedValue({ id: repoUuid } as Repo);
     const reposServiceStub = { findOrCreateForSubmission: findOrCreateSpy } as unknown as ReposService;
     const submissionsRepoStub = { insert: vi.fn() } as unknown as Repository<Submission>;
-    const controller = new SubmissionsController(reposServiceStub, new SubmissionsService(), submissionsRepoStub);
+    const controller = new SubmissionsController(
+      reposServiceStub,
+      new SubmissionsService(signingKeysRepoStub),
+      submissionsRepoStub,
+    );
 
     await expect(controller.create(dangerousDto)).rejects.toBeInstanceOf(BadRequestException);
 

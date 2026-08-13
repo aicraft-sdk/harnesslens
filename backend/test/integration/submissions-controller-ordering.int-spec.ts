@@ -44,7 +44,7 @@ describe('SubmissionsController.create -- validation runs before repo auto-provi
     reposRepo = ds.getRepository(Repo);
     controller = new SubmissionsController(
       new ReposService(accountsRepo, reposRepo),
-      new SubmissionsService(),
+      new SubmissionsService(ds.getRepository(SigningKey)),
       ds.getRepository(Submission),
     );
   }, 60_000);

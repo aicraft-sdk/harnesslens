@@ -25,7 +25,7 @@ export class SubmissionsController {
     // permanently creates `accounts`/`repos` rows, so it only runs once the submission is known
     // to be insertable -- a rejected submission must never leave an orphaned, permanently-existing
     // repo row behind.
-    const result = this.submissionsService.buildInsertableSubmission(dto);
+    const result = await this.submissionsService.buildInsertableSubmission(dto);
     if (!result.ok) {
       throw new BadRequestException(result.reason);
     }

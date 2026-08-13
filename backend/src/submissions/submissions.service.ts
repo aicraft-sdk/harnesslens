@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 import { isDangerousKey } from '../common/dangerous-keys';
+import { SigningKey } from '../signing-keys/entities/signing-key.entity';
+import { buildCanonicalPayload } from '../signing/canonical-payload';
+import { verifyEd25519 } from '../signing/ed25519';
 import type { CreateSubmissionDto } from './dto/create-submission.dto';
 
 // `repoId` is deliberately not part of this shape: it is the auto-provisioned repo's resolved
@@ -26,16 +31,23 @@ export type BuildInsertableSubmissionResult =
   | { ok: true; row: InsertableSubmissionFields }
   | { ok: false; reason: string };
 
+const INVALID_SIGNATURE_REASON = 'invalid signature';
+
 @Injectable()
 export class SubmissionsService {
+  constructor(@InjectRepository(SigningKey) private readonly signingKeysRepo: Repository<SigningKey>) {}
+
   /**
    * Reconstructs the insertable row field-by-field from the validated DTO -- never `{ ...dto }`.
    * dimensions[].id dangerous keys are fail-closed (reject the whole submission); frameworkMapping
    * dangerous keys are fail-open (skip only that one entry), matching leaderboard/parse-submission's
-   * documented split. Deliberately takes no `repoId`/DB dependency -- this must be safely callable
-   * before any repo-provisioning side effect runs (see `InsertableSubmissionFields` note above).
+   * documented split. Deliberately takes no `repoId`/repo-provisioning dependency -- this must be
+   * safely callable before `ReposService.findOrCreateForSubmission`'s side-effecting write runs
+   * (see `InsertableSubmissionFields` note above). It does now depend on `signing_keys` lookups
+   * (read-only) for verified-tier submissions -- a read has no orphaning side effect, so this does
+   * not reintroduce the validate-before-provision ordering risk.
    */
-  buildInsertableSubmission(dto: CreateSubmissionDto): BuildInsertableSubmissionResult {
+  async buildInsertableSubmission(dto: CreateSubmissionDto): Promise<BuildInsertableSubmissionResult> {
     for (const dimension of dto.dimensions) {
       if (isDangerousKey(dimension.id)) {
         return { ok: false, reason: `dimensions contains a dangerous key: ${dimension.id}` };
@@ -57,16 +69,18 @@ export class SubmissionsService {
       frameworkMapping[key] = { nistFunctions: value.nistFunctions, owaspIds: value.owaspIds };
     }
 
+    const reconstructedDimensions = dto.dimensions.map((d) => ({
+      id: d.id,
+      title: d.title,
+      earned: d.earned,
+      max: d.max,
+      percent: d.percent,
+    }));
+
     const row: InsertableSubmissionFields = {
       score: String(dto.score),
       level: { index: dto.level.index, name: dto.level.name },
-      dimensions: dto.dimensions.map((d) => ({
-        id: d.id,
-        title: d.title,
-        earned: d.earned,
-        max: d.max,
-        percent: d.percent,
-      })),
+      dimensions: reconstructedDimensions,
       frameworkMapping,
       commitSha: dto.commitSha,
       scannedAt: new Date(dto.scannedAt),
@@ -75,6 +89,59 @@ export class SubmissionsService {
       keyId: null,
     };
 
+    // Verified tier (Phase 3): only present when the submitter signed the payload with a
+    // registered Ed25519 key. A bad signature must be rejected outright (400, not persisted) --
+    // never silently downgraded to an unsigned, unverified-but-still-accepted submission.
+    if (dto.keyId !== undefined) {
+      if (dto.signature === undefined) {
+        return { ok: false, reason: INVALID_SIGNATURE_REASON };
+      }
+
+      const verified = await this.verifySignedSubmission(dto, reconstructedDimensions, frameworkMapping);
+      if (!verified) {
+        return { ok: false, reason: INVALID_SIGNATURE_REASON };
+      }
+
+      row.verified = true;
+      row.signature = dto.signature;
+      row.keyId = dto.keyId;
+    }
+
     return { ok: true, row };
+  }
+
+  /**
+   * Verifies fails closed for any reason (unknown key, revoked key, bad signature) -- the caller
+   * always sees the same generic rejection either way, so a failed verification attempt cannot be
+   * used as an oracle to distinguish "no such key" from "wrong signature". The canonical payload
+   * is always server-reconstructed here from the already-validated/-reconstructed fields (Durable
+   * Decision 10) -- `verifyEd25519` is never called with a client-supplied canonical string.
+   */
+  private async verifySignedSubmission(
+    dto: CreateSubmissionDto,
+    dimensions: InsertableSubmissionFields['dimensions'],
+    frameworkMapping: InsertableSubmissionFields['frameworkMapping'],
+  ): Promise<boolean> {
+    const signingKey = await this.signingKeysRepo.findOneBy({ keyId: dto.keyId });
+    if (!signingKey || signingKey.revokedAt !== null) {
+      return false;
+    }
+
+    const canonicalPayload = buildCanonicalPayload({
+      repoId: dto.repoId,
+      score: dto.score,
+      level: { index: dto.level.index, name: dto.level.name },
+      dimensions,
+      frameworkMapping,
+      commitSha: dto.commitSha,
+      scannedAt: dto.scannedAt,
+    });
+
+    try {
+      return verifyEd25519(signingKey.publicKey, canonicalPayload, dto.signature as string);
+    } catch {
+      // Any verification failure (malformed key/signature bytes, etc.) fails closed.
+      return false;
+    }
   }
 }
