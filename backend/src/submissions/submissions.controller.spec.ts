@@ -44,4 +44,19 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
     );
     expect(submissionsRepoStub.insert).not.toHaveBeenCalled();
   });
+
+  it('never calls reposService.findOrCreateForSubmission when service-layer validation rejects the submission (no orphaned accounts/repos row on a validation failure)', async () => {
+    const dangerousDto = {
+      ...validDto,
+      dimensions: [{ ...validDto.dimensions[0], id: '__proto__' }],
+    } as CreateSubmissionDto;
+    const findOrCreateSpy = vi.fn().mockResolvedValue({ id: repoUuid } as Repo);
+    const reposServiceStub = { findOrCreateForSubmission: findOrCreateSpy } as unknown as ReposService;
+    const submissionsRepoStub = { insert: vi.fn() } as unknown as Repository<Submission>;
+    const controller = new SubmissionsController(reposServiceStub, new SubmissionsService(), submissionsRepoStub);
+
+    await expect(controller.create(dangerousDto)).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(findOrCreateSpy).not.toHaveBeenCalled();
+  });
 });

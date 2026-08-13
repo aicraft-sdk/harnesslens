@@ -66,7 +66,7 @@ export class QueryService {
       FROM submissions s
       INNER JOIN repos r ON r.id = s.repo_id
       WHERE r.visibility = 'public'
-      ORDER BY s.repo_id, s.scanned_at DESC
+      ORDER BY s.repo_id, s.scanned_at DESC, s.submitted_at DESC
     `);
     return rows.map((row) => ({
       repoId: row.repoId,
@@ -92,7 +92,11 @@ export class QueryService {
     }
     const submission = await this.submissionsRepo.findOne({
       where: { repoId: repo.id },
-      order: { scannedAt: 'DESC' },
+      // A deterministic secondary sort key is required: `scannedAt` alone can tie (e.g. two
+      // submissions carrying the same source scan timestamp), and without a tie-break, Postgres
+      // makes no ordering guarantee -- this could disagree with `listPublicLatest`'s own tie-break
+      // on which row is "latest" for the same repo.
+      order: { scannedAt: 'DESC', submittedAt: 'DESC' },
     });
     if (!submission) {
       return null;
@@ -108,7 +112,9 @@ export class QueryService {
     }
     const submissions = await this.submissionsRepo.find({
       where: { repoId: repo.id },
-      order: { scannedAt: 'DESC' },
+      // Same deterministic tie-break as `getLatestForRepo` -- keeps the full history's ordering
+      // consistent with the "latest" endpoints, not just the first row.
+      order: { scannedAt: 'DESC', submittedAt: 'DESC' },
     });
     return submissions.map((submission) => toQueryResultRow(repoId, submission));
   }

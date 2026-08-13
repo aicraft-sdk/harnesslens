@@ -2,8 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { isDangerousKey } from '../common/dangerous-keys';
 import type { CreateSubmissionDto } from './dto/create-submission.dto';
 
-export interface InsertableSubmissionRow {
-  repoId: string;
+// `repoId` is deliberately not part of this shape: it is the auto-provisioned repo's resolved
+// UUID, only known *after* `ReposService.findOrCreateForSubmission` runs -- a side-effecting,
+// permanent DB write. Keeping it out of `buildInsertableSubmission`'s return type lets validation
+// run standalone, before that provisioning side effect, so a rejected submission never leaves an
+// orphaned `accounts`/`repos` row behind. The caller (`SubmissionsController.create`) attaches the
+// resolved `repoId` only once validation has already passed.
+export interface InsertableSubmissionFields {
   // The submissions.score column is Postgres `numeric`, which TypeORM maps to `string` in JS to
   // avoid float precision loss -- converted from the DTO's validated number here.
   score: string;
@@ -18,7 +23,7 @@ export interface InsertableSubmissionRow {
 }
 
 export type BuildInsertableSubmissionResult =
-  | { ok: true; row: InsertableSubmissionRow }
+  | { ok: true; row: InsertableSubmissionFields }
   | { ok: false; reason: string };
 
 @Injectable()
@@ -27,9 +32,10 @@ export class SubmissionsService {
    * Reconstructs the insertable row field-by-field from the validated DTO -- never `{ ...dto }`.
    * dimensions[].id dangerous keys are fail-closed (reject the whole submission); frameworkMapping
    * dangerous keys are fail-open (skip only that one entry), matching leaderboard/parse-submission's
-   * documented split.
+   * documented split. Deliberately takes no `repoId`/DB dependency -- this must be safely callable
+   * before any repo-provisioning side effect runs (see `InsertableSubmissionFields` note above).
    */
-  buildInsertableSubmission(dto: CreateSubmissionDto, repoUuid: string): BuildInsertableSubmissionResult {
+  buildInsertableSubmission(dto: CreateSubmissionDto): BuildInsertableSubmissionResult {
     for (const dimension of dto.dimensions) {
       if (isDangerousKey(dimension.id)) {
         return { ok: false, reason: `dimensions contains a dangerous key: ${dimension.id}` };
@@ -51,8 +57,7 @@ export class SubmissionsService {
       frameworkMapping[key] = { nistFunctions: value.nistFunctions, owaspIds: value.owaspIds };
     }
 
-    const row: InsertableSubmissionRow = {
-      repoId: repoUuid,
+    const row: InsertableSubmissionFields = {
       score: String(dto.score),
       level: { index: dto.level.index, name: dto.level.name },
       dimensions: dto.dimensions.map((d) => ({

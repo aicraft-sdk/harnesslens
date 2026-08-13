@@ -21,13 +21,17 @@ export class SubmissionsController {
   @Post()
   @HttpCode(201)
   async create(@Body() dto: CreateSubmissionDto) {
-    const repo = await this.reposService.findOrCreateForSubmission(dto.repoId);
-    const result = this.submissionsService.buildInsertableSubmission(dto, repo.id);
+    // Validation must run before any provisioning side effect: `findOrCreateForSubmission`
+    // permanently creates `accounts`/`repos` rows, so it only runs once the submission is known
+    // to be insertable -- a rejected submission must never leave an orphaned, permanently-existing
+    // repo row behind.
+    const result = this.submissionsService.buildInsertableSubmission(dto);
     if (!result.ok) {
       throw new BadRequestException(result.reason);
     }
-    // Field-by-field row, never `{ ...dto }`, per the reconstruction discipline.
-    const insertResult = await this.submissionsRepo.insert(result.row);
+    const repo = await this.reposService.findOrCreateForSubmission(dto.repoId);
+    // Field-by-field row (never `{ ...dto }`), with the resolved repo UUID attached last.
+    const insertResult = await this.submissionsRepo.insert({ ...result.row, repoId: repo.id });
     return { id: insertResult.identifiers[0]?.id, verified: result.row.verified };
   }
 }
