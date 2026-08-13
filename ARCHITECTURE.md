@@ -101,7 +101,8 @@ rendering, a CLI writing `site-data.json`, PR-based submission (never direct-com
 `.github/workflows/rebuild-leaderboard.yml` pipeline that builds and publishes the static site
 to GitHub Pages on a schedule, on `submissions/**` changes, and on manual dispatch.
 
-What remains genuinely open, with no design decisions made:
+What remains genuinely open (most with no design decisions made yet — see the first item's status
+note below for the one exception now under construction):
 
 - **A live hosted backend.** This package's scorer is zero-network, filesystem/build-time-only
   by design (see "Determinism/safety guarantees" above), and the static leaderboard's own
@@ -109,6 +110,15 @@ What remains genuinely open, with no design decisions made:
   and PR-gated, never a live write path. A dynamic, queryable service (signed/verifiable
   attestations, a live submission API, tiered public/private scoring) would be a new surface,
   not an extension of the existing scorer or the static leaderboard.
+  **Status (2026-08-13): under active construction**, no longer just an open idea — an RFC
+  (`docs/plans/2026-08-13-live-hosted-backend-plan.md`) and execution plan
+  (`docs/plans/2026-08-13-live-hosted-backend-execution-plan.md`) were approved, recommending a
+  standalone NestJS + PostgreSQL/TypeORM service packaged via Docker, and Phase 0 (package
+  scaffold, entities/migration, docker-compose dev environment) and Phase 1 (`POST /submissions`
+  — a basic/unsigned-tier live write path with allowlist DTO validation, account/repo
+  auto-provisioning, a `rejected_submissions` audit trail, and rate limiting) have landed under
+  `backend/`. This new service does not modify the existing scorer or static leaderboard. See
+  `backend/README.md` (added once the build reaches Phase 5) for local dev instructions.
 - **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
   "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
   pass/fail mechanism against NIST AI RMF or OWASP exists, and building one is a distinct,
