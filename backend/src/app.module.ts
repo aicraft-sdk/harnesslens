@@ -10,6 +10,7 @@ import { RejectedSubmission } from './submissions/entities/rejected-submission.e
 import { assertRequiredEnv } from './common/assert-required-env';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { QueryModule } from './query/query.module';
+import { AccountsModule } from './accounts/accounts.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { QueryModule } from './query/query.module';
     }),
     SubmissionsModule,
     QueryModule,
+    AccountsModule,
   ],
   controllers: [HealthController],
 })
