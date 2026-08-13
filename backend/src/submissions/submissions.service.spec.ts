@@ -80,6 +80,23 @@ describe('SubmissionsService.buildInsertableSubmission', () => {
     }
   });
 
+  it('drops a frameworkMapping entry with a malformed shape (nistFunctions/owaspIds not arrays) but keeps well-formed entries (fail-open)', () => {
+    const dto = {
+      ...validDto,
+      frameworkMapping: {
+        ci: {}, // malformed: no nistFunctions/owaspIds at all
+        security: { nistFunctions: ['PROTECT'], owaspIds: ['A01'] },
+      },
+    } as unknown as CreateSubmissionDto;
+    const result = service.buildInsertableSubmission(dto, repoUuid);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.row.frameworkMapping).toEqual({
+        security: { nistFunctions: ['PROTECT'], owaspIds: ['A01'] },
+      });
+    }
+  });
+
   it('never spreads the raw DTO into the insert row -- constructs field-by-field', () => {
     const dto = { ...validDto, maliciousExtra: 'should never appear' } as unknown as CreateSubmissionDto;
     const result = service.buildInsertableSubmission(dto, repoUuid);

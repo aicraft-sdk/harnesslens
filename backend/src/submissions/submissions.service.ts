@@ -41,6 +41,13 @@ export class SubmissionsService {
       if (isDangerousKey(key)) {
         continue; // fail-open: skip the one bad entry, keep the rest
       }
+      // Minimal shape check: class-validator can't natively validate this arbitrary-key record
+      // (see Task 1.1's DTO note), so a malformed entry like `{ ci: {} }` would otherwise be
+      // copied through as `{ nistFunctions: undefined, owaspIds: undefined }` with no rejection.
+      // Skip-and-continue the one malformed entry, matching this field's existing fail-open rule.
+      if (!Array.isArray(value?.nistFunctions) || !Array.isArray(value?.owaspIds)) {
+        continue;
+      }
       frameworkMapping[key] = { nistFunctions: value.nistFunctions, owaspIds: value.owaspIds };
     }
 

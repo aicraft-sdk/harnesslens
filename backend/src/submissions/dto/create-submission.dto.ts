@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { IsArray, IsISO8601, IsNumber, IsObject, IsOptional, IsString, Matches, ValidateNested } from 'class-validator';
+import { IsArray, IsISO8601, IsNumber, IsObject, IsOptional, IsString, Matches, Max, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 const REPO_ID_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
@@ -28,7 +28,10 @@ class DimensionDto {
 // own validation decorator, so those are exactly the fields whitelisted).
 export class CreateSubmissionDto {
   @Matches(REPO_ID_RE) repoId!: string;
-  @IsNumber() score!: number;
+  // Defense-in-depth: the submissions.score column is Postgres numeric(5,2), whose maximum
+  // representable magnitude is 999.99 -- without this bound a score above that limit passes DTO
+  // validation and only fails as a raw "numeric field overflow" QueryFailedError at insert time.
+  @IsNumber() @Max(999.99) score!: number;
   @ValidateNested() @Type(() => LevelDto) level!: LevelDto;
   @IsArray() @ValidateNested({ each: true }) @Type(() => DimensionDto) dimensions!: DimensionDto[];
   @IsObject() frameworkMapping!: Record<string, { nistFunctions: string[]; owaspIds: string[] }>;

@@ -33,4 +33,10 @@ describe('CreateSubmissionDto', () => {
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
   });
+
+  it('rejects a score above the numeric(5,2) column max of 999.99', async () => {
+    const dto = plainToInstance(CreateSubmissionDto, { ...validPayload, score: 1000 });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
 });

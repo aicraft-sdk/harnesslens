@@ -47,4 +47,14 @@ describe('ReposService.findOrCreateForSubmission', () => {
     const second = await reposService.findOrCreateForSubmission('acme/widgets');
     expect(second.id).toBe(first.id);
   });
+
+  it('resolves the same account+repo row when called concurrently for a never-seen repoId (race-safe upsert)', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () => reposService.findOrCreateForSubmission('acme/concurrent-widgets')),
+    );
+    const repoIds = new Set(results.map((r) => r.id));
+    const accountIds = new Set(results.map((r) => r.accountId));
+    expect(repoIds.size).toBe(1);
+    expect(accountIds.size).toBe(1);
+  });
 });
