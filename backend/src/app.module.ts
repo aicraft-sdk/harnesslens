@@ -9,6 +9,7 @@ import { Submission } from './submissions/entities/submission.entity';
 import { RejectedSubmission } from './submissions/entities/rejected-submission.entity';
 import { assertRequiredEnv } from './common/assert-required-env';
 import { SubmissionsModule } from './submissions/submissions.module';
+import { QueryModule } from './query/query.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
       ],
     }),
     SubmissionsModule,
+    QueryModule,
   ],
   controllers: [HealthController],
 })
