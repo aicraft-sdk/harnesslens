@@ -1,5 +1,4 @@
 import { Test } from '@nestjs/testing';
-import { ValidationPipe } from '@nestjs/common';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { DataSource } from 'typeorm';
 import request from 'supertest';
@@ -11,6 +10,7 @@ import { Repo } from '../../src/repos/entities/repo.entity';
 import { Submission } from '../../src/submissions/entities/submission.entity';
 import { RejectedSubmission } from '../../src/submissions/entities/rejected-submission.entity';
 import { InitSchema1786633235167 } from '../../src/migrations/1786633235167-InitSchema';
+import { createGlobalValidationPipe } from '../../src/common/validation-pipe.factory';
 
 const validPayload = {
   repoId: 'acme/rate-limit-widgets',
@@ -45,17 +45,24 @@ afterAll(async () => {
 });
 
 describe('POST /submissions rate limiting', () => {
-  it('returns 429 after exceeding SUBMIT_RATE_LIMIT_PER_MIN requests from one IP', async () => {
+  it('returns 429 after exceeding SUBMIT_RATE_LIMIT_PER_MIN requests from one IP, without auditing the 429 as a rejected submission', async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     const app = moduleRef.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
+    app.useGlobalPipes(createGlobalValidationPipe());
     await app.init();
+    const dataSource = moduleRef.get(DataSource);
+    const rejectedRepo = dataSource.getRepository(RejectedSubmission);
 
     const limit = Number(process.env.SUBMIT_RATE_LIMIT_PER_MIN ?? 30);
     for (let i = 0; i < limit; i++) {
       await request(app.getHttpServer()).post('/submissions').send(validPayload);
     }
+    const rejectedCountBefore429 = await rejectedRepo.count();
     await request(app.getHttpServer()).post('/submissions').send(validPayload).expect(429);
+
+    // Rate limiting exists to protect the DB from abuse-volume load -- auditing every 429 would
+    // defeat that purpose, so the rejected_submissions count must be unchanged by the 429 itself.
+    expect(await rejectedRepo.count()).toBe(rejectedCountBefore429);
 
     await app.close();
   });
