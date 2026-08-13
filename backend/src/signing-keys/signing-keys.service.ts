@@ -17,4 +17,16 @@ export class SigningKeysService {
     await this.signingKeysRepo.insert({ accountId, publicKey, keyId, revokedAt: null });
     return { keyId };
   }
+
+  /**
+   * Scoped update (WHERE keyId AND accountId in one statement) rather than find-then-update --
+   * avoids a TOCTOU gap and means a `keyId` that genuinely doesn't exist and a `keyId` that
+   * belongs to a different account both produce the exact same `affected: 0` result, so the
+   * caller (controller) can't distinguish them either -- matches this repo's established
+   * private-vs-never-existed indistinguishability discipline.
+   */
+  async revoke(accountId: string, keyId: string): Promise<boolean> {
+    const result = await this.signingKeysRepo.update({ accountId, keyId }, { revokedAt: new Date() });
+    return (result.affected ?? 0) > 0;
+  }
 }

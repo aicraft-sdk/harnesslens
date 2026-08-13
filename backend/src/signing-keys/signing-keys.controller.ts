@@ -1,4 +1,15 @@
-import { Body, Controller, ForbiddenException, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  HttpCode,
+  NotFoundException,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiKeyGuard } from '../auth/api-key.guard';
 import type { Account } from '../accounts/entities/account.entity';
 import { RegisterSigningKeyDto } from './dto/register-signing-key.dto';
@@ -26,5 +37,25 @@ export class SigningKeysController {
       throw new ForbiddenException('accountId does not match the authenticated account');
     }
     return this.signingKeysService.register(accountId, dto.publicKey);
+  }
+
+  @Delete(':keyId')
+  @HttpCode(204)
+  async revoke(
+    @Param('accountId') accountId: string,
+    @Param('keyId') keyId: string,
+    @Req() req: RequestWithAccount,
+  ): Promise<void> {
+    // Same tenant-isolation layer (a) check as registration above.
+    if (req.account?.id !== accountId) {
+      throw new ForbiddenException('accountId does not match the authenticated account');
+    }
+    // A `keyId` that exists but belongs to a different account must be indistinguishable from a
+    // `keyId` that never existed at all -- 404 either way, never a 403/other status that would
+    // let a caller probe for another account's key IDs.
+    const revoked = await this.signingKeysService.revoke(accountId, keyId);
+    if (!revoked) {
+      throw new NotFoundException();
+    }
   }
 }
