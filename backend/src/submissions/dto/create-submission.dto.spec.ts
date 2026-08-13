@@ -19,15 +19,10 @@ describe('CreateSubmissionDto', () => {
     expect(await validate(dto)).toHaveLength(0);
   });
 
-  it('rejects an extra top-level field', async () => {
-    const dto = plainToInstance(
-      CreateSubmissionDto,
-      { ...validPayload, extra: 'nope' },
-      { excludeExtraneousValues: false },
-    );
-    // exercised at the ValidationPipe level in the e2e test below (forbidNonWhitelisted), this
-    // unit test asserts the DTO's own field surface has no `extra` property to accept
-    expect(Object.keys(dto)).not.toContain('extra');
+  it('rejects an extra top-level field via whitelist/forbidNonWhitelisted (same mechanism the ValidationPipe uses)', async () => {
+    const dto = plainToInstance(CreateSubmissionDto, { ...validPayload, extra: 'nope' });
+    const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: true });
+    expect(errors.length).toBeGreaterThan(0);
   });
 
   it('rejects a dimension with id "__proto__"', async () => {

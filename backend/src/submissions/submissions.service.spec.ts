@@ -23,7 +23,7 @@ describe('SubmissionsService.buildInsertableSubmission', () => {
     if (result.ok) {
       expect(result.row).toEqual({
         repoId: repoUuid,
-        score: validDto.score,
+        score: String(validDto.score),
         level: validDto.level,
         dimensions: validDto.dimensions,
         frameworkMapping: {},

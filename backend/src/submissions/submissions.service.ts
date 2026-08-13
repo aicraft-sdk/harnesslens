@@ -4,7 +4,9 @@ import type { CreateSubmissionDto } from './dto/create-submission.dto';
 
 export interface InsertableSubmissionRow {
   repoId: string;
-  score: number;
+  // The submissions.score column is Postgres `numeric`, which TypeORM maps to `string` in JS to
+  // avoid float precision loss -- converted from the DTO's validated number here.
+  score: string;
   level: { index: number; name: string };
   dimensions: Array<{ id: string; title: string; earned: number; max: number; percent: number }>;
   frameworkMapping: Record<string, { nistFunctions: string[]; owaspIds: string[] }>;
@@ -44,7 +46,7 @@ export class SubmissionsService {
 
     const row: InsertableSubmissionRow = {
       repoId: repoUuid,
-      score: dto.score,
+      score: String(dto.score),
       level: { index: dto.level.index, name: dto.level.name },
       dimensions: dto.dimensions.map((d) => ({
         id: d.id,
