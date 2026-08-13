@@ -43,7 +43,7 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
     const submissionsRepoStub = { insert: vi.fn() } as unknown as Repository<Submission>;
     const controller = new SubmissionsController(
       reposServiceStub,
-      new SubmissionsService(signingKeysRepoStub),
+      new SubmissionsService(signingKeysRepoStub, reposServiceStub),
       submissionsRepoStub,
     );
 
@@ -64,7 +64,7 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
     const submissionsRepoStub = { insert: vi.fn() } as unknown as Repository<Submission>;
     const controller = new SubmissionsController(
       reposServiceStub,
-      new SubmissionsService(signingKeysRepoStub),
+      new SubmissionsService(signingKeysRepoStub, reposServiceStub),
       submissionsRepoStub,
     );
 

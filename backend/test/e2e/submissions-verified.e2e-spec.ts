@@ -143,4 +143,29 @@ describe('POST /submissions -- verified tier (Ed25519 signature verification)', 
     const submissionsRepo = dataSource.getRepository(Submission);
     expect(await submissionsRepo.count()).toBe(0);
   });
+
+  it('a key registered by one account cannot produce verified: true for a repo effectively owned by a different account (cross-account key binding) -- 400, not persisted at all', async () => {
+    // Account "acme" registers a genuinely valid signing key.
+    const { keyId, privateKey } = await registerAccountAndKey('acme');
+    // The repoId's org segment ("othercorp") is different from "acme" -- submitting against it
+    // auto-provisions a brand new, separate account ("othercorp") that "acme"'s key was never
+    // registered under. The signature itself is cryptographically valid over the correct
+    // canonical payload for this exact repoId -- only the account-binding check can catch this.
+    const crossAccountFields: CanonicalSubmissionFields = {
+      ...validSubmissionFields,
+      repoId: 'othercorp/widgets',
+    };
+    const signature = signFields(privateKey, crossAccountFields);
+
+    await request(app.getHttpServer())
+      .post('/submissions')
+      .send({ ...crossAccountFields, keyId, signature })
+      .expect(400);
+
+    // Critical: never persisted as verified:true (or at all) -- a signature that is valid but
+    // bound to the wrong account must be rejected outright, the same as any other invalid
+    // signature.
+    const submissionsRepo = dataSource.getRepository(Submission);
+    expect(await submissionsRepo.count()).toBe(0);
+  });
 });
