@@ -11,6 +11,7 @@ import { assertRequiredEnv } from './common/assert-required-env';
 import { SubmissionsModule } from './submissions/submissions.module';
 import { QueryModule } from './query/query.module';
 import { AccountsModule } from './accounts/accounts.module';
+import { SigningKeysModule } from './signing-keys/signing-keys.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { AccountsModule } from './accounts/accounts.module';
     SubmissionsModule,
     QueryModule,
     AccountsModule,
+    SigningKeysModule,
   ],
   controllers: [HealthController],
 })
