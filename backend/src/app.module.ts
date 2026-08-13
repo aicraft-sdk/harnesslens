@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { HealthController } from './health/health.controller';
 import { Account } from './accounts/entities/account.entity';
 import { SigningKey } from './signing-keys/entities/signing-key.entity';
@@ -23,6 +24,17 @@ import { SubmissionsModule } from './submissions/submissions.module';
           extra: { statement_timeout: 5000, connectionTimeoutMillis: 5000 },
         };
       },
+    }),
+    // forRootAsync (not forRoot) so the env var is read lazily at DI-resolution/module-compile
+    // time, not eagerly when this file is first imported -- matters for tests that set
+    // SUBMIT_RATE_LIMIT_PER_MIN before compiling the testing module.
+    ThrottlerModule.forRootAsync({
+      useFactory: () => [
+        {
+          ttl: 60_000,
+          limit: Number(process.env.SUBMIT_RATE_LIMIT_PER_MIN ?? 30),
+        },
+      ],
     }),
     SubmissionsModule,
   ],

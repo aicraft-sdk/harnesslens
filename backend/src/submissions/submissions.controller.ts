@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, HttpCode, Post, UseFilters } from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpCode, Post, UseFilters, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Repository } from 'typeorm';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { Submission } from './entities/submission.entity';
@@ -9,6 +10,7 @@ import { SubmissionRejectionFilter } from './submission-rejection.filter';
 
 @Controller('submissions')
 @UseFilters(SubmissionRejectionFilter)
+@UseGuards(ThrottlerGuard)
 export class SubmissionsController {
   constructor(
     private readonly reposService: ReposService,
