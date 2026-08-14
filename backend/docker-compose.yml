@@ -42,16 +42,18 @@ services:
       - ./src:/app/src
     healthcheck:
       # The dev-stage image (node:22-alpine base) has no curl; use a Node-based probe instead so
-      # `docker compose up -d --wait` reflects actual app-level readiness (GET /health -> 200),
-      # not just "container started" -- NestJS's dev-mode watch runner doesn't process-exit on a
-      # bootstrap failure (e.g. an unreachable DATABASE_URL) the way the production stage does, so
-      # without this healthcheck a broken env var silently reports as healthy.
+      # `docker compose up -d --wait` reflects actual app-level readiness, not just "container
+      # started" -- NestJS's dev-mode watch runner doesn't process-exit on a bootstrap failure
+      # (e.g. an unreachable DATABASE_URL) the way the production stage does, so without this
+      # healthcheck a broken env var silently reports as healthy. Probes /health/db (DB-aware),
+      # not /health (hardcoded {status:'ok'}, DB-independent) -- a DB-independent probe would stay
+      # "healthy" even after the database goes down post-boot.
       test:
         [
           'CMD',
           'node',
           '-e',
-          "require('http').get('http://localhost:3000/health',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+          "require('http').get('http://localhost:3000/health/db',res=>process.exit(res.statusCode===200?0:1)).on('error',()=>process.exit(1))",
         ]
       interval: 2s
       timeout: 5s
