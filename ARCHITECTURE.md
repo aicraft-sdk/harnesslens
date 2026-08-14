@@ -128,7 +128,22 @@ note below for the one exception now under construction):
   cycles closed 2 real CRITICAL findings (cross-account signing-key forgery; a follow-up
   org-account-squatting bug introduced by that fix's own account-resolution write) — see
   `docs/decisions/2026-08-14-verified-tier-signing-key-trust-boundary-decision.md` for the
-  decision record. This new service does not modify the existing scorer or static leaderboard.
+  decision record. Phase 4 (repo visibility toggle scoped to the owning account; a second
+  tenant-isolation layer for private-repo history queries — `QueryService.getPrivateHistory`
+  always joins through and filters by the owning `repo.accountId`, with no code path that omits
+  it; and wiring the private tier into `GET /repos/:org/:repo` and `.../history` via an
+  `OptionalApiKeyGuard` that resolves the caller's account without ever blocking public reads)
+  completes the trust-tier model the RFC set out: basic/public (Phases 1-2), verified (Phase 3),
+  and now private (Phase 4). This was the plan's second and final HITL checkpoint — its own
+  highest-scored risk (multi-tenant data leak) — and the live adversarial re-hunt found zero
+  tenant-isolation breaches; the checkpoint's 3 fixed findings (2 HIGH, 1 MEDIUM) were all
+  robustness/availability bugs (a guard that violated its own "never throws" contract on
+  malformed auth headers, incorrectly blocking public reads; a missing UUID-format check on the
+  visibility endpoint causing an uncaught 500; a visibility update scoped by id alone instead of
+  the id+accountId-scoped pattern `SigningKeysService.revoke()` already established), not new
+  confidentiality gaps — so this phase did not warrant its own decision record; the Phase 3 doc
+  above already covers the tenant-isolation precedent these fixes converged on. This new service
+  does not modify the existing scorer or static leaderboard.
   See `backend/README.md` (added once the build reaches Phase 5) for local dev instructions.
 - **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
   "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
