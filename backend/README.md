@@ -42,13 +42,20 @@ Environment variables (see `.env.example`):
 
 ## Container image
 
-`Dockerfile` is multi-stage:
+`Dockerfile` is multi-stage, stages defined in this order:
 
-- `dev` — watch-mode dev container (`npm run start:dev`), used by `docker-compose.yml`.
-- `build` — `npm ci && npm run build`, produces `dist/`.
-- `runtime` — production-shaped: `npm ci --omit=dev`, copies `dist/` from `build`, runs as the
-  image's built-in non-root `node` user, `CMD ["node", "dist/main.js"]`. No bind mounts, no dev
-  dependencies.
+1. `dev` — watch-mode dev container (`npm run start:dev`), used by `docker-compose.yml`.
+2. `build` — `npm ci && npm run build`, produces `dist/`.
+3. `runtime` — production-shaped: `npm ci --omit=dev`, copies `dist/` from `build`, runs as the
+   image's built-in non-root `node` user, `CMD ["node", "dist/main.js"]`. No bind mounts, no dev
+   dependencies.
+
+> **Always pass `--target` explicitly.** A bare `docker build .` (no `--target`) silently resolves
+> to the *last* stage defined in the Dockerfile — currently `runtime`, not `dev` — because Docker
+> builds the final stage by default when none is named. `docker-compose.yml`'s `api`/`migrate`
+> services already pin `build.target: dev` for this reason (see "Local dev" above); when building
+> by hand, always name the stage you want: `docker build --target dev .` for the watch-mode dev
+> image, `docker build --target runtime .` for the production image. Never rely on the default.
 
 Build and run the production image standalone:
 

@@ -19,9 +19,9 @@ trap cleanup EXIT
 echo "==> Starting docker-compose stack (docker compose up -d --wait)"
 docker compose up -d --wait
 
-# The api service has no docker-compose healthcheck (only db does), so `--wait` returns once the
-# api container process is running, not once the NestJS app inside it has finished booting and is
-# listening on :3000. Poll until the health endpoint actually responds instead of racing it.
+# `docker compose up -d --wait` already blocks on the api service's own healthcheck (GET /health),
+# so the app has finished booting and is listening on :3000 by this point. This poll +
+# diagnostics-on-failure check is a belt-and-suspenders confirmation, not a race workaround.
 echo "==> Waiting for health check to respond"
 for _ in $(seq 1 30); do
   if curl -sf http://localhost:3000/health > /dev/null; then
@@ -29,7 +29,13 @@ for _ in $(seq 1 30); do
   fi
   sleep 1
 done
-curl -sf http://localhost:3000/health
+
+if ! curl -sf http://localhost:3000/health; then
+  echo "FATAL: /health did not respond successfully after startup wait" >&2
+  echo "==> Dumping docker compose logs for diagnosis" >&2
+  docker compose logs
+  exit 1
+fi
 
 echo
 echo "==> Running full e2e proof-scenario suite (test/e2e)"
