@@ -7,11 +7,14 @@ import type { CreateSubmissionDto } from './dto/create-submission.dto';
 import type { Submission } from './entities/submission.entity';
 import type { ReposService } from '../repos/repos.service';
 import type { Repo } from '../repos/entities/repo.entity';
+import type { Account } from '../accounts/entities/account.entity';
 import type { SigningKey } from '../signing-keys/entities/signing-key.entity';
 
-// These DTOs never set `keyId`, so the signing-key repository is never consulted -- stubbed only
-// to satisfy SubmissionsService's constructor dependency.
+// These DTOs never set `keyId`, so the signing-key/accounts/repos repositories are never
+// consulted -- stubbed only to satisfy SubmissionsService's constructor dependencies.
 const signingKeysRepoStub = { findOneBy: vi.fn() } as unknown as Repository<SigningKey>;
+const accountsRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Account>;
+const reposRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Repo>;
 
 const repoUuid = '11111111-1111-1111-1111-111111111111';
 
@@ -43,7 +46,7 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
     const submissionsRepoStub = { insert: vi.fn() } as unknown as Repository<Submission>;
     const controller = new SubmissionsController(
       reposServiceStub,
-      new SubmissionsService(signingKeysRepoStub, reposServiceStub),
+      new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub),
       submissionsRepoStub,
     );
 
@@ -64,7 +67,7 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
     const submissionsRepoStub = { insert: vi.fn() } as unknown as Repository<Submission>;
     const controller = new SubmissionsController(
       reposServiceStub,
-      new SubmissionsService(signingKeysRepoStub, reposServiceStub),
+      new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub),
       submissionsRepoStub,
     );
 

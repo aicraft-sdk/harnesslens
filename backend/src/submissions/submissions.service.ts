@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { isDangerousKey } from '../common/dangerous-keys';
+import { Account } from '../accounts/entities/account.entity';
+import { Repo } from '../repos/entities/repo.entity';
 import { SigningKey } from '../signing-keys/entities/signing-key.entity';
 import { buildCanonicalPayload } from '../signing/canonical-payload';
 import { verifyEd25519 } from '../signing/ed25519';
-import { ReposService } from '../repos/repos.service';
 import type { CreateSubmissionDto } from './dto/create-submission.dto';
 
 // `repoId` is deliberately not part of this shape: it is the auto-provisioned repo's resolved
@@ -38,23 +39,19 @@ const INVALID_SIGNATURE_REASON = 'invalid signature';
 export class SubmissionsService {
   constructor(
     @InjectRepository(SigningKey) private readonly signingKeysRepo: Repository<SigningKey>,
-    private readonly reposService: ReposService,
+    @InjectRepository(Account) private readonly accountsRepo: Repository<Account>,
+    @InjectRepository(Repo) private readonly reposRepo: Repository<Repo>,
   ) {}
 
   /**
    * Reconstructs the insertable row field-by-field from the validated DTO -- never `{ ...dto }`.
    * dimensions[].id dangerous keys are fail-closed (reject the whole submission); frameworkMapping
    * dangerous keys are fail-open (skip only that one entry), matching leaderboard/parse-submission's
-   * documented split. For basic-tier (no `keyId`) submissions this remains callable before
-   * `ReposService.findOrCreateForSubmission`'s side-effecting write runs (see
-   * `InsertableSubmissionFields` note above) -- no repo/account row is provisioned here. For
-   * verified-tier (`keyId` present) submissions, `verifySignedSubmission` below does call
-   * `findOrCreateForSubmission` itself, ahead of the controller's own later call for the same
-   * repoId -- required to resolve the repo's owning account for the signing-key-account-binding
-   * check (see that method's doc comment); the second call from the controller is then a no-op
-   * lookup, not a second write, so this does not reintroduce the validate-before-provision
-   * orphan-row ordering risk for the dangerous-key/framework-mapping checks above, which still run
-   * first and still short-circuit before any repo/account row exists.
+   * documented split. No provisioning write ever runs from inside this method or anything it calls
+   * (see `verifySignedSubmission`'s doc comment) -- the only provisioning write for the whole
+   * request happens in the controller, strictly after this method returns `{ ok: true }` (see
+   * `InsertableSubmissionFields` note above), so a rejected submission -- basic-tier or
+   * verified-tier -- never leaves an orphaned `accounts`/`repos` row behind.
    */
   async buildInsertableSubmission(dto: CreateSubmissionDto): Promise<BuildInsertableSubmissionResult> {
     for (const dimension of dto.dimensions) {
@@ -129,11 +126,21 @@ export class SubmissionsService {
    *
    * A signing key may only produce `verified: true` for a repo whose account matches the signing
    * key's own account -- otherwise any registered key could forge `verified: true` for any other
-   * org's repoId. `ReposService.findOrCreateForSubmission` resolves/auto-provisions the repo's
-   * account before this check: it's a read-mostly, idempotent, race-safe upsert (ON CONFLICT DO
-   * NOTHING), so calling it here -- ahead of the controller's own later call for the same repoId
-   * -- does not reintroduce the validate-before-provision orphan-row risk; the second call is a
-   * no-op lookup once the row exists.
+   * org's repoId. This account resolution is READ-ONLY -- it must never call
+   * `ReposService.findOrCreateForSubmission` or any other provisioning write. A legitimate
+   * verified-tier submission's account always already exists: `SigningKeysController` never
+   * auto-provisions, so a signing key can only ever be registered against an already-real,
+   * `POST /accounts`-created account. If neither a `repos` row nor an `accounts` row exists yet
+   * for this `repoId`, this is not a legitimate first-ever-submission case (those are always
+   * unsigned, basic-tier) -- it fails closed with the same generic rejection as every other
+   * verification failure, so a rejected forgery attempt against a never-seen org can never
+   * permanently squat that org's `accounts.org_name` (unique) and block its real owner from ever
+   * registering.
+   *
+   * The read-only repos/accounts lookup below always runs, regardless of whether the signing key
+   * itself is unknown or revoked -- an unknown-key or revoked-key rejection must do the same DB
+   * work as a wrong-account rejection, so response timing cannot be used as an oracle to
+   * distinguish "no such key" / "revoked key" from "right key, wrong account".
    */
   private async verifySignedSubmission(
     dto: CreateSubmissionDto,
@@ -141,12 +148,18 @@ export class SubmissionsService {
     frameworkMapping: InsertableSubmissionFields['frameworkMapping'],
   ): Promise<boolean> {
     const signingKey = await this.signingKeysRepo.findOneBy({ keyId: dto.keyId });
-    if (!signingKey || signingKey.revokedAt !== null) {
-      return false;
-    }
 
-    const repo = await this.reposService.findOrCreateForSubmission(dto.repoId);
-    if (signingKey.accountId !== repo.accountId) {
+    const existingRepo = await this.reposRepo.findOneBy({ repoId: dto.repoId });
+    const resolvedAccountId = existingRepo
+      ? existingRepo.accountId
+      : (await this.accountsRepo.findOneBy({ orgName: dto.repoId.split('/')[0] }))?.id ?? null;
+
+    if (
+      !signingKey ||
+      signingKey.revokedAt !== null ||
+      resolvedAccountId === null ||
+      signingKey.accountId !== resolvedAccountId
+    ) {
       return false;
     }
 

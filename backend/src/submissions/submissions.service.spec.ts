@@ -4,7 +4,7 @@ import type { Repository } from 'typeorm';
 import { SubmissionsService } from './submissions.service';
 import type { CreateSubmissionDto } from './dto/create-submission.dto';
 import type { SigningKey } from '../signing-keys/entities/signing-key.entity';
-import type { ReposService } from '../repos/repos.service';
+import type { Account } from '../accounts/entities/account.entity';
 import type { Repo } from '../repos/entities/repo.entity';
 import { buildCanonicalPayload, type CanonicalSubmissionFields } from '../signing/canonical-payload';
 
@@ -19,11 +19,12 @@ const validDto: CreateSubmissionDto = {
 } as CreateSubmissionDto;
 
 describe('SubmissionsService.buildInsertableSubmission', () => {
-  // Basic-tier DTOs used throughout this file never set `keyId`, so the signing-key repository is
-  // never consulted -- stubbed only to satisfy the constructor's dependency.
+  // Basic-tier DTOs used throughout this file never set `keyId`, so the signing-key/accounts/repos
+  // repositories are never consulted -- stubbed only to satisfy the constructor's dependencies.
   const signingKeysRepoStub = { findOneBy: vi.fn() } as unknown as Repository<SigningKey>;
-  const reposServiceStub = { findOrCreateForSubmission: vi.fn() } as unknown as ReposService;
-  const service = new SubmissionsService(signingKeysRepoStub, reposServiceStub);
+  const accountsRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Account>;
+  const reposRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Repo>;
+  const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
 
   it('builds an insertable row field-by-field for a valid submission', async () => {
     const result = await service.buildInsertableSubmission(validDto);
@@ -149,13 +150,16 @@ describe('SubmissionsService.buildInsertableSubmission -- verified-tier signatur
     } as unknown as Repository<SigningKey>;
     // The repo's *actual* owning account is different from the signing key's account -- this is
     // the exact cross-tenant forgery this check must block, even though the signature itself is
-    // cryptographically valid over the correct payload.
-    const reposServiceStub = {
-      findOrCreateForSubmission: vi
+    // cryptographically valid over the correct payload. Read-only lookup: the `repos` row already
+    // exists (it was provisioned by a prior, legitimate submission), so the accounts fallback is
+    // never consulted.
+    const accountsRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Account>;
+    const reposRepoStub = {
+      findOneBy: vi
         .fn()
         .mockResolvedValue({ id: 'repo-uuid', accountId: 'a-different-account-entirely' } as Repo),
-    } as unknown as ReposService;
-    const service = new SubmissionsService(signingKeysRepoStub, reposServiceStub);
+    } as unknown as Repository<Repo>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
 
     const result = await service.buildInsertableSubmission(signedDto);
 
@@ -178,17 +182,120 @@ describe('SubmissionsService.buildInsertableSubmission -- verified-tier signatur
         revokedAt: null,
       } as SigningKey),
     } as unknown as Repository<SigningKey>;
-    const reposServiceStub = {
-      findOrCreateForSubmission: vi
-        .fn()
-        .mockResolvedValue({ id: 'repo-uuid', accountId: 'shared-account' } as Repo),
-    } as unknown as ReposService;
-    const service = new SubmissionsService(signingKeysRepoStub, reposServiceStub);
+    const accountsRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Account>;
+    const reposRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({ id: 'repo-uuid', accountId: 'shared-account' } as Repo),
+    } as unknown as Repository<Repo>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
 
     const result = await service.buildInsertableSubmission(signedDto);
 
     expect(result.ok).toBe(true);
     expect(result.ok && result.row.verified).toBe(true);
+  });
+
+  it('accepts a genuinely valid signature for the very-first-ever submission to a repo (no `repos` row yet -- falls back to the `accounts` row created by POST /accounts)', async () => {
+    const signedDto: CreateSubmissionDto = { ...validDto, keyId: 'key-1', signature: '' } as CreateSubmissionDto;
+    signedDto.signature = signDto(privateKey, signedDto);
+
+    const signingKeysRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({
+        keyId: 'key-1',
+        accountId: 'shared-account',
+        publicKey: publicKeyBase64,
+        revokedAt: null,
+      } as SigningKey),
+    } as unknown as Repository<SigningKey>;
+    // No `repos` row exists yet for this repoId -- read-only lookup falls back to the `accounts`
+    // row, which must already exist (POST /accounts is the only path that ever creates one; a
+    // signing key can only be registered against an already-real account).
+    const reposRepoStub = { findOneBy: vi.fn().mockResolvedValue(null) } as unknown as Repository<Repo>;
+    const accountsRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({ id: 'shared-account', orgName: 'acme' } as Account),
+    } as unknown as Repository<Account>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
+
+    const result = await service.buildInsertableSubmission(signedDto);
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.row.verified).toBe(true);
+  });
+
+  it('rejects (fails closed) when neither a `repos` row nor an `accounts` row exists yet for the targeted repoId -- and never calls a provisioning write', async () => {
+    const signedDto: CreateSubmissionDto = { ...validDto, keyId: 'key-1', signature: '' } as CreateSubmissionDto;
+    signedDto.signature = signDto(privateKey, signedDto);
+
+    const signingKeysRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({
+        keyId: 'key-1',
+        accountId: 'shared-account',
+        publicKey: publicKeyBase64,
+        revokedAt: null,
+      } as SigningKey),
+    } as unknown as Repository<SigningKey>;
+    const reposRepoFindOneBy = vi.fn().mockResolvedValue(null);
+    const accountsRepoFindOneBy = vi.fn().mockResolvedValue(null);
+    const reposRepoStub = { findOneBy: reposRepoFindOneBy } as unknown as Repository<Repo>;
+    const accountsRepoStub = { findOneBy: accountsRepoFindOneBy } as unknown as Repository<Account>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
+
+    const result = await service.buildInsertableSubmission(signedDto);
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.reason).toBe('invalid signature');
+    expect(reposRepoFindOneBy).toHaveBeenCalledWith({ repoId: validDto.repoId });
+    expect(accountsRepoFindOneBy).toHaveBeenCalledWith({ orgName: 'acme' });
+  });
+
+  it('runs the read-only repos lookup even when the signing key is unknown -- so an unknown-key rejection is not timing-distinguishable from a wrong-account rejection', async () => {
+    const signedDto: CreateSubmissionDto = {
+      ...validDto,
+      keyId: 'no-such-key',
+      signature: 'AAAAAAAAAAAAAAAAAAAA',
+    } as CreateSubmissionDto;
+
+    const signingKeysRepoStub = { findOneBy: vi.fn().mockResolvedValue(null) } as unknown as Repository<SigningKey>;
+    const reposRepoFindOneBy = vi.fn().mockResolvedValue(null);
+    const accountsRepoFindOneBy = vi.fn().mockResolvedValue(null);
+    const reposRepoStub = { findOneBy: reposRepoFindOneBy } as unknown as Repository<Repo>;
+    const accountsRepoStub = { findOneBy: accountsRepoFindOneBy } as unknown as Repository<Account>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
+
+    const result = await service.buildInsertableSubmission(signedDto);
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.reason).toBe('invalid signature');
+    expect(reposRepoFindOneBy).toHaveBeenCalledWith({ repoId: validDto.repoId });
+    expect(accountsRepoFindOneBy).toHaveBeenCalledWith({ orgName: 'acme' });
+  });
+
+  it('runs the read-only repos lookup even when the signing key is revoked -- so a revoked-key rejection is not timing-distinguishable from a wrong-account rejection', async () => {
+    const signedDto: CreateSubmissionDto = {
+      ...validDto,
+      keyId: 'key-1',
+      signature: 'AAAAAAAAAAAAAAAAAAAA',
+    } as CreateSubmissionDto;
+
+    const signingKeysRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({
+        keyId: 'key-1',
+        accountId: 'shared-account',
+        publicKey: publicKeyBase64,
+        revokedAt: new Date(),
+      } as SigningKey),
+    } as unknown as Repository<SigningKey>;
+    const reposRepoFindOneBy = vi.fn().mockResolvedValue(null);
+    const accountsRepoFindOneBy = vi.fn().mockResolvedValue(null);
+    const reposRepoStub = { findOneBy: reposRepoFindOneBy } as unknown as Repository<Repo>;
+    const accountsRepoStub = { findOneBy: accountsRepoFindOneBy } as unknown as Repository<Account>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
+
+    const result = await service.buildInsertableSubmission(signedDto);
+
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.reason).toBe('invalid signature');
+    expect(reposRepoFindOneBy).toHaveBeenCalledWith({ repoId: validDto.repoId });
+    expect(accountsRepoFindOneBy).toHaveBeenCalledWith({ orgName: 'acme' });
   });
 
   it('does not throw when the stored signing key has a garbage/wrong-length publicKey -- fails closed cleanly instead of crashing (defensive regression guard)', async () => {
@@ -208,12 +315,11 @@ describe('SubmissionsService.buildInsertableSubmission -- verified-tier signatur
     } as unknown as Repository<SigningKey>;
     // Same account as the repo -- isolates this test to the publicKey-parsing crash path, not the
     // account-binding check above.
-    const reposServiceStub = {
-      findOrCreateForSubmission: vi
-        .fn()
-        .mockResolvedValue({ id: 'repo-uuid', accountId: 'shared-account' } as Repo),
-    } as unknown as ReposService;
-    const service = new SubmissionsService(signingKeysRepoStub, reposServiceStub);
+    const accountsRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Account>;
+    const reposRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({ id: 'repo-uuid', accountId: 'shared-account' } as Repo),
+    } as unknown as Repository<Repo>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
 
     await expect(service.buildInsertableSubmission(signedDto)).resolves.toEqual({
       ok: false,

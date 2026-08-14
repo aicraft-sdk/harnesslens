@@ -72,7 +72,7 @@ describe('POST /submissions -- verified tier (Ed25519 signature verification)', 
 
   beforeEach(async () => {
     await dataSource.query(
-      'TRUNCATE TABLE accounts, signing_keys, submissions, rejected_submissions RESTART IDENTITY CASCADE',
+      'TRUNCATE TABLE accounts, repos, signing_keys, submissions, rejected_submissions RESTART IDENTITY CASCADE',
     );
   });
 
@@ -167,5 +167,35 @@ describe('POST /submissions -- verified tier (Ed25519 signature verification)', 
     // signature.
     const submissionsRepo = dataSource.getRepository(Submission);
     expect(await submissionsRepo.count()).toBe(0);
+  });
+
+  it('a rejected cross-account signed submission does not permanently provision accounts/repos rows for the targeted (never-seen) org', async () => {
+    // Account "acme" registers a genuinely valid signing key.
+    const { keyId, privateKey } = await registerAccountAndKey('acme');
+    const accountsRepo = dataSource.getRepository(Account);
+    const reposRepo = dataSource.getRepository(Repo);
+    const accountsBefore = await accountsRepo.count();
+    const reposBefore = await reposRepo.count();
+
+    // "othercorp" has never been seen before by this server. The signature is cryptographically
+    // valid over the correct canonical payload for this exact repoId -- only the account-binding
+    // check can catch this forgery attempt.
+    const crossAccountFields: CanonicalSubmissionFields = {
+      ...validSubmissionFields,
+      repoId: 'othercorp/widgets',
+    };
+    const signature = signFields(privateKey, crossAccountFields);
+
+    await request(app.getHttpServer())
+      .post('/submissions')
+      .send({ ...crossAccountFields, keyId, signature })
+      .expect(400);
+
+    // Critical: a rejected forgery attempt must never permanently create accounts/repos rows for
+    // the targeted org -- accounts.org_name is unique, so a leaked row would permanently block
+    // that org's real owner from ever registering. Account resolution inside the verification
+    // path must be read-only.
+    expect(await accountsRepo.count()).toBe(accountsBefore);
+    expect(await reposRepo.count()).toBe(reposBefore);
   });
 });
