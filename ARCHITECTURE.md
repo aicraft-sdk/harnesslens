@@ -114,11 +114,22 @@ note below for the one exception now under construction):
   (`docs/plans/2026-08-13-live-hosted-backend-plan.md`) and execution plan
   (`docs/plans/2026-08-13-live-hosted-backend-execution-plan.md`) were approved, recommending a
   standalone NestJS + PostgreSQL/TypeORM service packaged via Docker, and Phase 0 (package
-  scaffold, entities/migration, docker-compose dev environment) and Phase 1 (`POST /submissions`
+  scaffold, entities/migration, docker-compose dev environment), Phase 1 (`POST /submissions`
   — a basic/unsigned-tier live write path with allowlist DTO validation, account/repo
-  auto-provisioning, a `rejected_submissions` audit trail, and rate limiting) have landed under
-  `backend/`. This new service does not modify the existing scorer or static leaderboard. See
-  `backend/README.md` (added once the build reaches Phase 5) for local dev instructions.
+  auto-provisioning, a `rejected_submissions` audit trail, and rate limiting), and Phase 2
+  (`GET /repos`, `GET /repos/:org/:repo`, and `GET /repos/:org/:repo/history` — the first live
+  read path, public-tier only: latest-per-repo listing and per-repo detail/history, with
+  private and never-existed repos returning an identical 404 so existence can't be inferred),
+  and Phase 3 (account registration with hashed API-key issuance, an `ApiKeyGuard` for
+  account-scoped writes, signing-key registration/revocation, and Ed25519 signature verification
+  — always against a server-reconstructed canonical payload, never a client-supplied one — wired
+  into `POST /submissions`) have landed under `backend/` — the "verified" trust tier is now a
+  real, load-bearing capability, not scaffolding. Phase 3 was a HITL checkpoint: 2 remediation
+  cycles closed 2 real CRITICAL findings (cross-account signing-key forgery; a follow-up
+  org-account-squatting bug introduced by that fix's own account-resolution write) — see
+  `docs/decisions/2026-08-14-verified-tier-signing-key-trust-boundary-decision.md` for the
+  decision record. This new service does not modify the existing scorer or static leaderboard.
+  See `backend/README.md` (added once the build reaches Phase 5) for local dev instructions.
 - **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
   "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
   pass/fail mechanism against NIST AI RMF or OWASP exists, and building one is a distinct,
