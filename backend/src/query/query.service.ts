@@ -118,4 +118,25 @@ export class QueryService {
     });
     return submissions.map((submission) => toQueryResultRow(repoId, submission));
   }
+
+  /**
+   * Tenant-isolation layer (b): the sole entry point for reading a private repo's submission
+   * history. The query builder always joins through the owning `repo` relation and always
+   * includes the `repo.accountId = :accountId` predicate -- there is no conditional branch that
+   * omits it and no separate "admin" method that skips it, so a guard bug alone (layer (a), see
+   * ReposController/QueryController) can never leak another account's private submissions.
+   * Returns an empty array (never throws, never leaks whether the repo exists) whenever the
+   * caller-supplied accountId does not own the repo identified by `repoId`.
+   */
+  async getPrivateHistory(repoId: string, accountId: string): Promise<QueryResultRow[]> {
+    const submissions = await this.submissionsRepo
+      .createQueryBuilder('s')
+      .innerJoin('s.repo', 'repo')
+      .where('repo.repoId = :repoId', { repoId })
+      .andWhere('repo.accountId = :accountId', { accountId })
+      .orderBy('s.scannedAt', 'DESC')
+      .addOrderBy('s.submittedAt', 'DESC')
+      .getMany();
+    return submissions.map((submission) => toQueryResultRow(repoId, submission));
+  }
 }
