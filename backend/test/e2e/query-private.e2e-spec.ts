@@ -76,6 +76,21 @@ describe('Private-tier read endpoints (GET /repos/:org/:repo, /history, and GET 
     return repo;
   }
 
+  async function seedPublicSubmission(accountId: string, repoId: string) {
+    const repo = await reposRepo.save(reposRepo.create({ repoId, accountId, visibility: 'public' }));
+    await submissionsRepo.insert({
+      repoId: repo.id,
+      score: '50',
+      level: { index: 1, name: 'L1' },
+      dimensions: [],
+      frameworkMapping: {},
+      commitSha: 'a'.repeat(40),
+      scannedAt: new Date(),
+      verified: false,
+    });
+    return repo;
+  }
+
   it('owner with valid API key sees their own private repo history -> 200', async () => {
     const account = await registerAccount('acme');
     await seedPrivateSubmission(account.accountId, 'acme/private-repo');
@@ -135,5 +150,35 @@ describe('Private-tier read endpoints (GET /repos/:org/:repo, /history, and GET 
       .expect(200);
 
     expect(res.body).toEqual([]);
+  });
+
+  it('a garbage Authorization header on a PUBLIC repo still returns 200 (OptionalApiKeyGuard degrades to unauthenticated, never throws)', async () => {
+    const account = await registerAccount('acme');
+    await seedPublicSubmission(account.accountId, 'acme/public-repo');
+
+    await request(app.getHttpServer())
+      .get('/repos/acme/public-repo')
+      .set('Authorization', 'garbage-not-a-bearer-token')
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .get('/repos/acme/public-repo/history')
+      .set('Authorization', 'garbage-not-a-bearer-token')
+      .expect(200);
+  });
+
+  it('the same garbage Authorization header on a PRIVATE repo returns 404 (not 401)', async () => {
+    const account = await registerAccount('acme');
+    await seedPrivateSubmission(account.accountId, 'acme/private-repo');
+
+    await request(app.getHttpServer())
+      .get('/repos/acme/private-repo')
+      .set('Authorization', 'garbage-not-a-bearer-token')
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .get('/repos/acme/private-repo/history')
+      .set('Authorization', 'garbage-not-a-bearer-token')
+      .expect(404);
   });
 });

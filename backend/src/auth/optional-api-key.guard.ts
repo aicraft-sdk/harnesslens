@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { Account } from '../accounts/entities/account.entity';
@@ -15,9 +15,11 @@ const BEARER_PREFIX = 'Bearer ';
  * Soft-auth variant of ApiKeyGuard for read endpoints that must stay reachable unauthenticated
  * (public tier) while also resolving `request.account` when a valid bearer token IS presented, so
  * downstream handlers can check private-tier ownership (tenant-isolation layer (a)). Never throws
- * for a missing Authorization header -- only for a header that is present but malformed or
- * doesn't match any account, matching the plan's "doesn't throw when absent, only when
- * present-and-invalid" contract.
+ * -- a missing header, a present-but-malformed header, and a present-but-unrecognized API key all
+ * degrade identically to "unauthenticated" (request.account left undefined). Blocking access on a
+ * bad header here would incorrectly gate PUBLIC repos behind auth too, since this guard runs on
+ * every read request regardless of the target repo's visibility; only the downstream
+ * ownership/visibility check (layer (a)) may ever reject a request.
  */
 @Injectable()
 export class OptionalApiKeyGuard implements CanActivate {
@@ -26,21 +28,16 @@ export class OptionalApiKeyGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithAccount>();
     const authHeader = request.headers?.authorization;
-    if (!authHeader) {
+    if (!authHeader?.startsWith(BEARER_PREFIX)) {
       return true;
-    }
-    if (!authHeader.startsWith(BEARER_PREFIX)) {
-      throw new UnauthorizedException('malformed Authorization header');
     }
 
     const apiKey = authHeader.slice(BEARER_PREFIX.length);
     const apiKeyHash = createHash('sha256').update(apiKey).digest('hex');
     const account = await this.accountsRepo.findOneBy({ apiKeyHash });
-    if (!account) {
-      throw new UnauthorizedException('invalid API key');
+    if (account) {
+      request.account = account;
     }
-
-    request.account = account;
     return true;
   }
 }
