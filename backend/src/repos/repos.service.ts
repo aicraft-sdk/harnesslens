@@ -57,9 +57,16 @@ export class ReposService {
     return this.reposRepo.findOneBy({ repoId });
   }
 
-  /** Scoped by the repo's own UUID id; the controller has already verified ownership. */
-  async setVisibility(id: string, visibility: 'public' | 'private'): Promise<Repo> {
-    await this.reposRepo.update({ id }, { visibility });
-    return this.reposRepo.findOneByOrFail({ id });
+  /**
+   * Mandatory-`WHERE`-clause-scoped update (id AND accountId in one statement) rather than
+   * update-by-id-alone -- matches SigningKeysService.revoke()'s pattern: ownership is enforced at
+   * the DB layer too, not just by the controller's own pre-check, so a future caller of this
+   * method can never accidentally skip the ownership filter. Returns whether any row was actually
+   * updated (`result.affected`), letting the caller distinguish "not found or not yours" (0) from
+   * a real update (>0) without a second round trip.
+   */
+  async setVisibility(id: string, accountId: string, visibility: 'public' | 'private'): Promise<boolean> {
+    const result = await this.reposRepo.update({ id, accountId }, { visibility });
+    return (result.affected ?? 0) > 0;
   }
 }
