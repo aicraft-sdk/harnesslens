@@ -12,6 +12,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
 import { QueryModule } from './query/query.module';
 import { AccountsModule } from './accounts/accounts.module';
 import { SigningKeysModule } from './signing-keys/signing-keys.module';
+import { ReposModule } from './repos/repos.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { SigningKeysModule } from './signing-keys/signing-keys.module';
     QueryModule,
     AccountsModule,
     SigningKeysModule,
+    ReposModule,
   ],
   controllers: [HealthController],
 })

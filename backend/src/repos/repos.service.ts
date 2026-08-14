@@ -42,4 +42,24 @@ export class ReposService {
 
     return this.reposRepo.findOneByOrFail({ repoId });
   }
+
+  /** Lookup by the repo's own UUID primary key (used by the visibility-toggle endpoint). */
+  async findById(id: string): Promise<Repo | null> {
+    return this.reposRepo.findOneBy({ id });
+  }
+
+  /**
+   * Lookup by the string `org/repo` identifier regardless of visibility -- used by the read
+   * endpoints (Task 4.3) to resolve repo metadata (visibility, owning accountId) before deciding
+   * whether to route to the public or private query path. Never returns submission data itself.
+   */
+  async findByRepoId(repoId: string): Promise<Repo | null> {
+    return this.reposRepo.findOneBy({ repoId });
+  }
+
+  /** Scoped by the repo's own UUID id; the controller has already verified ownership. */
+  async setVisibility(id: string, visibility: 'public' | 'private'): Promise<Repo> {
+    await this.reposRepo.update({ id }, { visibility });
+    return this.reposRepo.findOneByOrFail({ id });
+  }
 }
