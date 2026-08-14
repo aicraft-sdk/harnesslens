@@ -105,4 +105,16 @@ describe('PATCH /accounts/:accountId/repos/:repoId/visibility', () => {
     const row = await reposRepo.findOneBy({ id: repo.id });
     expect(row?.visibility).toBe('public');
   });
+
+  it('a non-UUID repoId returns a clean 400, never a raw 500', async () => {
+    const account = await registerAccount('acme');
+
+    const res = await request(app.getHttpServer())
+      .patch(`/accounts/${account.accountId}/repos/not-a-uuid/visibility`)
+      .set('Authorization', `Bearer ${account.apiKey}`)
+      .send({ visibility: 'private' })
+      .expect(400);
+
+    expect(res.body.statusCode).toBe(400);
+  });
 });

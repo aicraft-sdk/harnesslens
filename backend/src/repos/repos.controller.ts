@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
   Param,
+  ParseUUIDPipe,
   Patch,
   Req,
   UseGuards,
@@ -25,7 +26,7 @@ export class ReposController {
   @Patch(':repoId/visibility')
   async updateVisibility(
     @Param('accountId') accountId: string,
-    @Param('repoId') repoId: string,
+    @Param('repoId', ParseUUIDPipe) repoId: string,
     @Body() dto: UpdateRepoVisibilityDto,
     @Req() req: RequestWithAccount,
   ) {
@@ -48,7 +49,13 @@ export class ReposController {
       throw new ForbiddenException('accountId does not match the authenticated account');
     }
 
-    const updated = await this.reposService.setVisibility(repo.id, dto.visibility);
-    return { repoId: updated.repoId, visibility: updated.visibility };
+    const updated = await this.reposService.setVisibility(repo.id, req.account.id, dto.visibility);
+    if (!updated) {
+      // Defense in depth: the ownership checks above already guarantee this, so this branch is
+      // only reachable via a genuine race (e.g. the repo's ownership changed between the check
+      // and the scoped update) -- 404, matching SigningKeysService.revoke()'s not-found handling.
+      throw new NotFoundException();
+    }
+    return { repoId: repo.repoId, visibility: dto.visibility };
   }
 }
