@@ -86,7 +86,7 @@ harnesslens --badge ./badge.svg
 harnesslens multi --config ./repos.json --json
 ```
 
-When run with no explicit config, the CLI's own default composes the `core` pack (36 ported
+When run with no explicit config, the CLI's own default composes the `core` pack (39 ported
 upstream checks) **and** the `ai-craft` company pack. Programmatic callers of `runAudit()`
 default to `core` only — see [Programmatic API](#programmatic-api) below. A
 `.harness-audit.json` file in the target repo overrides both defaults outright.

@@ -5,8 +5,25 @@
 
 import { countRuleScopes, ruleHasValidFrontmatter } from '../../harness/frontmatter.js';
 import { collectRules, contextRootFile, summarizeArtifacts } from '../../harness/index.js';
-import type { Check } from '../../types.js';
+import type { Check, ScanContext } from '../../types.js';
 import { countHeadings, nonEmptyLines, totalLines } from '../../util.js';
+
+/**
+ * Broad, phrase-level match for secure-coding guidance an agent's own
+ * instructions might give it — not an exact-phrase requirement (see CTX-02
+ * for the same "substantive content" detection philosophy).
+ */
+const SECURE_CODING_RE =
+  /hardcod\w*\s+(?:secrets?|credentials?|passwords?|api[- ]?keys?)|no\s+hardcoded\s+(?:secrets?|credentials?|passwords?|api[- ]?keys?)|never\s+(?:hardcode|commit)\s+(?:secrets?|credentials?)|sql\s+injection|parameteriz\w*\s+quer\w*|input\s+validation|validat\w*\s+(?:all\s+)?(?:user\s+)?input|sanitiz\w*\s+(?:user\s+)?input|avoid(?:ing)?\s+eval|unsafe\s+eval|eval\(|insecure\s+deserializ\w*|unsafe\s+deserializ\w*|secure[- ]coding/i;
+
+/** Files that carry the agent's own written instructions (root context file + scoped rules). */
+function agentInstructionFiles(ctx: ScanContext): string[] {
+  const files: string[] = [];
+  const root = contextRootFile(ctx);
+  if (root) files.push(root);
+  for (const rule of collectRules(ctx)) files.push(rule.path);
+  return files;
+}
 
 export const contextChecks: Check[] = [
   {
@@ -168,6 +185,30 @@ export const contextChecks: Check[] = [
         };
       }
       return { passed: false, evidence: 'Legacy .cursorrules file found with no modern scoped rules.' };
+    },
+  },
+  {
+    id: 'CTX-09',
+    dimension: 'context',
+    title: 'Secure-coding guidance instructed to the agent',
+    points: 2,
+    remediation:
+      'Add explicit secure-coding guidance to AGENTS.md/CLAUDE.md — agents follow written instructions more reliably than implicit expectations; this is a prompt-level guardrail distinct from downstream SAST scanning (see AIC-12).',
+    run(ctx) {
+      const files = agentInstructionFiles(ctx);
+      if (files.length === 0) {
+        return { passed: false, evidence: 'No agent context file or scoped rules to evaluate.' };
+      }
+      for (const file of files) {
+        const content = ctx.read(file);
+        if (content && SECURE_CODING_RE.test(content)) {
+          return { passed: true, evidence: `${file} contains explicit secure-coding guidance.` };
+        }
+      }
+      return {
+        passed: false,
+        evidence: `Scanned ${files.length} agent instruction file(s); no explicit secure-coding guidance found.`,
+      };
     },
   },
 ];

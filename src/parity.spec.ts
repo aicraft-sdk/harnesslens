@@ -15,9 +15,9 @@ const LEVEL_FIXTURES = [
 ];
 
 describe('core pack parity with reference fixtures', () => {
-  it('exposes exactly the 36 checks in the core pack', () => {
+  it('exposes exactly the 39 checks in the core pack', () => {
     expect(corePack.id).toBe('core');
-    expect(corePack.checks).toHaveLength(36);
+    expect(corePack.checks).toHaveLength(39);
   });
 
   for (const { dir, expectedLevel } of LEVEL_FIXTURES) {

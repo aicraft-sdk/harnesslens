@@ -1,5 +1,5 @@
 /**
- * The `core` check pack — the 36 checks in this package's original core
+ * The `core` check pack — the 39 checks in this package's original core
  * check catalog. See NOTICE for third-party attribution. Organized
  * one file per dimension (`checks/{context,skills,...}.ts`
  * layout) and assembled here into a single `CheckPack`-shaped object via
@@ -34,7 +34,7 @@ export const corePack: CheckPack = definePack({
   ].map(defineCheck),
 });
 
-/** Backward-compatible alias for `corePack.checks` — the flat list of the 36 core checks. */
+/** Backward-compatible alias for `corePack.checks` — the flat list of the 39 core checks. */
 export const ALL_CHECKS: Check[] = corePack.checks;
 
 export { agentChecks, ciChecks, contextChecks, hookChecks, hygieneChecks, sensorChecks, skillChecks };

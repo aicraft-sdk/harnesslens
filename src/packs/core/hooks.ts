@@ -4,7 +4,54 @@
  */
 
 import { hookCommandPathsResolve, readNormalizedHooks } from '../../harness/hooks.js';
-import type { Check } from '../../types.js';
+import type { Check, ScanContext } from '../../types.js';
+import { safeJsonParse } from '../../util.js';
+
+/** Claude Code settings files that may carry a `permissions` allow/deny/ask scope. */
+const CLAUDE_SETTINGS_FILES = ['.claude/settings.json', '.claude/settings.local.json'];
+
+interface ClaudePermissionsSettings {
+  permissions?: { allow?: unknown; deny?: unknown; ask?: unknown };
+}
+
+function nonEmptyList(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
+interface ToolPermissionScopeResult {
+  hasScope: boolean;
+  /** File that existed but failed to parse as JSON, if any (distinct from "scope empty"). */
+  invalidJsonFile: string | null;
+  /** True if some other file parsed validly but its permissions block was present-and-empty
+   * (as opposed to absent) — distinguishes "nothing else even tried" from "another file tried
+   * and also failed to grant scope", so evidence can mention both failures. */
+  otherFileParsedButEmpty: boolean;
+}
+
+/** Reports whether a Claude Code settings file declares a non-empty allow/deny/ask scope,
+ * distinguishing a malformed-JSON settings file from a validly-parsed-but-empty one. A
+ * later file's valid non-empty scope still passes even if an earlier file failed to parse;
+ * the parse failure is only surfaced when no file ends up granting scope. */
+function hasToolPermissionScope(ctx: ScanContext): ToolPermissionScopeResult {
+  let invalidJsonFile: string | null = null;
+  let otherFileParsedButEmpty = false;
+  for (const file of CLAUDE_SETTINGS_FILES) {
+    if (!ctx.has(file)) continue;
+    const parsed = safeJsonParse(ctx.read(file) ?? '');
+    if (parsed === undefined) {
+      invalidJsonFile ??= file;
+      continue;
+    }
+    if (!parsed || typeof parsed !== 'object') continue;
+    const permissions = (parsed as ClaudePermissionsSettings).permissions;
+    if (!permissions || typeof permissions !== 'object') continue;
+    if (nonEmptyList(permissions.allow) || nonEmptyList(permissions.deny) || nonEmptyList(permissions.ask)) {
+      return { hasScope: true, invalidJsonFile: null, otherFileParsedButEmpty: false };
+    }
+    otherFileParsedButEmpty = true;
+  }
+  return { hasScope: false, invalidJsonFile, otherFileParsedButEmpty };
+}
 
 export const hookChecks: Check[] = [
   {
@@ -120,6 +167,38 @@ export const hookChecks: Check[] = [
             evidence: `All ${validated} path-referencing hook command(s) resolve to committed files.`,
           }
         : { passed: false, evidence: `Hook command(s) reference missing files: ${missing.join(' | ')}` };
+    },
+  },
+  {
+    id: 'HKS-06',
+    dimension: 'hooks',
+    title: 'Explicit tool-permission scope declared',
+    points: 3,
+    remediation:
+      'Declare a non-empty allow/deny/ask tool-permission scope (.claude/settings.json permissions block) — an unrestricted agent can run any tool with no gate.',
+    run(ctx) {
+      if (!CLAUDE_SETTINGS_FILES.some((f) => ctx.has(f))) {
+        return {
+          passed: false,
+          evidence: 'No .claude/settings.json or settings.local.json found (no tool-permission scope declared).',
+        };
+      }
+      const result = hasToolPermissionScope(ctx);
+      if (result.hasScope) {
+        return { passed: true, evidence: 'Claude Code settings declare a non-empty permissions allow/deny/ask list.' };
+      }
+      if (result.invalidJsonFile) {
+        return {
+          passed: false,
+          evidence: result.otherFileParsedButEmpty
+            ? `${result.invalidJsonFile} is not valid JSON, and no other settings file declares a non-empty permissions scope.`
+            : `${result.invalidJsonFile} is not valid JSON.`,
+        };
+      }
+      return {
+        passed: false,
+        evidence: 'Claude Code settings found but permissions allow/deny/ask lists are empty or absent.',
+      };
     },
   },
 ];

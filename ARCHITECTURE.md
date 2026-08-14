@@ -167,7 +167,7 @@ Capturing the still-open ideas here so they aren't lost — not a commitment to 
 
 ## The two built-in packs
 
-- **`core`** (`src/packs/core/`) — the 36 checks in this package's original core check
+- **`core`** (`src/packs/core/`) — the 39 checks in this package's original core check
   catalog, organized one file per dimension-ish grouping (`context.ts`, `skills.ts`, `agents.ts`,
   `hooks.ts`, `sensors.ts`, `ci.ts`, `hygiene.ts`) and assembled into a single `corePack` via
   `definePack`. `ALL_CHECKS` remains exported as a backward-compatible alias for

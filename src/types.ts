@@ -65,7 +65,7 @@ export interface Check {
 /**
  * A composable bundle of checks (and optionally custom dimensions) that the
  * registry (`registry.ts`) flattens into the check/dimension list `score.ts`
- * scores. `core` (the 36 ported upstream checks) is the built-in pack;
+ * scores. `core` (the 39 ported upstream checks) is the built-in pack;
  * external packs are added via config (`config.ts`) without forking this
  * package. `levelRules` is reserved for a future maturity-ladder override
  * mechanism and is intentionally untyped/unused in Phase 2.
