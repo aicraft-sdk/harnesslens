@@ -1,0 +1,56 @@
+{
+  "composeFile": "docker-compose.yml",
+  "healthCheckUrl": "http://localhost:3000/health",
+  "setup": "cd backend && npm ci && docker compose build",
+  "reset": "docker compose down -v && docker compose up -d --wait",
+  "cleanup": "docker compose down -v --remove-orphans",
+  "proofScenarios": [
+    {
+      "name": "Golden path: basic-tier submission is created and immediately queryable",
+      "phase": "Phase 1 + 2",
+      "script": null
+    },
+    {
+      "name": "Negative path: malformed submission is rejected with a structured reason, not silently dropped",
+      "phase": "Phase 1",
+      "script": null
+    },
+    {
+      "name": "Negative path: submission containing a \"__proto__\" dimension id is rejected",
+      "phase": "Phase 1",
+      "script": null
+    },
+    {
+      "name": "Golden path: signed submission from a registered key is marked verified",
+      "phase": "Phase 3",
+      "script": null
+    },
+    {
+      "name": "Negative path: submission with an invalid signature is rejected outright, never marked verified: false and silently accepted as if unsigned",
+      "phase": "Phase 3",
+      "script": null
+    },
+    {
+      "name": "Golden path: account owner can toggle a repo to private and query its own private history",
+      "phase": "Phase 4",
+      "script": null
+    },
+    {
+      "name": "Negative path: a different account cannot read another account's private repo history (404, not 403, and not visible in the public listing)",
+      "phase": "Phase 4",
+      "script": null
+    },
+    {
+      "name": "Recovery path: rate-limited submitter receives 429 and can resubmit after the window resets",
+      "phase": "Phase 1",
+      "script": null
+    }
+  ],
+  "stressScenarios": [
+    {
+      "name": "Submission burst stays within the configured rate-limit threshold and does not corrupt data under concurrent writes to the same repoId",
+      "command": "npm run test:stress -- --scenario submission-burst",
+      "phase": "Phase 1 (optional/deferred exact profile)"
+    }
+  ]
+}

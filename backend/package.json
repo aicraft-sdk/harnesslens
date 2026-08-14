@@ -1,0 +1,47 @@
+{
+  "name": "@ai-craft/harnesslens-backend",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Live, multi-tenant scoring API + Postgres backend for harnesslens (item 1 of ARCHITECTURE.md Future direction). Not published.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:stress": "node scripts/stress-scenario.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/data-source.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/data-source.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.29",
+    "@nestjs/core": "^11.1.29",
+    "@nestjs/platform-express": "^11.1.29",
+    "@nestjs/throttler": "^6.5.0",
+    "@nestjs/typeorm": "^11.0.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.15.1",
+    "pg": "^8.23.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typeorm": "^0.3.28"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@nestjs/testing": "^11.1.29",
+    "@swc/core": "^1.15.47",
+    "@testcontainers/postgresql": "^12.1.0",
+    "@types/node": "^26.2.0",
+    "@types/supertest": "^7.0.2",
+    "supertest": "^7.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0",
+    "unplugin-swc": "^1.5.11",
+    "vitest": "^3.0.0"
+  }
+}

@@ -101,7 +101,8 @@ rendering, a CLI writing `site-data.json`, PR-based submission (never direct-com
 `.github/workflows/rebuild-leaderboard.yml` pipeline that builds and publishes the static site
 to GitHub Pages on a schedule, on `submissions/**` changes, and on manual dispatch.
 
-What remains genuinely open, with no design decisions made:
+What remains genuinely open (most with no design decisions made yet — see the first item's status
+note below for the one exception now under construction):
 
 - **A live hosted backend.** This package's scorer is zero-network, filesystem/build-time-only
   by design (see "Determinism/safety guarantees" above), and the static leaderboard's own
@@ -109,6 +110,41 @@ What remains genuinely open, with no design decisions made:
   and PR-gated, never a live write path. A dynamic, queryable service (signed/verifiable
   attestations, a live submission API, tiered public/private scoring) would be a new surface,
   not an extension of the existing scorer or the static leaderboard.
+  **Status (2026-08-13): under active construction**, no longer just an open idea — an RFC
+  (`docs/plans/2026-08-13-live-hosted-backend-plan.md`) and execution plan
+  (`docs/plans/2026-08-13-live-hosted-backend-execution-plan.md`) were approved, recommending a
+  standalone NestJS + PostgreSQL/TypeORM service packaged via Docker, and Phase 0 (package
+  scaffold, entities/migration, docker-compose dev environment), Phase 1 (`POST /submissions`
+  — a basic/unsigned-tier live write path with allowlist DTO validation, account/repo
+  auto-provisioning, a `rejected_submissions` audit trail, and rate limiting), and Phase 2
+  (`GET /repos`, `GET /repos/:org/:repo`, and `GET /repos/:org/:repo/history` — the first live
+  read path, public-tier only: latest-per-repo listing and per-repo detail/history, with
+  private and never-existed repos returning an identical 404 so existence can't be inferred),
+  and Phase 3 (account registration with hashed API-key issuance, an `ApiKeyGuard` for
+  account-scoped writes, signing-key registration/revocation, and Ed25519 signature verification
+  — always against a server-reconstructed canonical payload, never a client-supplied one — wired
+  into `POST /submissions`) have landed under `backend/` — the "verified" trust tier is now a
+  real, load-bearing capability, not scaffolding. Phase 3 was a HITL checkpoint: 2 remediation
+  cycles closed 2 real CRITICAL findings (cross-account signing-key forgery; a follow-up
+  org-account-squatting bug introduced by that fix's own account-resolution write) — see
+  `docs/decisions/2026-08-14-verified-tier-signing-key-trust-boundary-decision.md` for the
+  decision record. Phase 4 (repo visibility toggle scoped to the owning account; a second
+  tenant-isolation layer for private-repo history queries — `QueryService.getPrivateHistory`
+  always joins through and filters by the owning `repo.accountId`, with no code path that omits
+  it; and wiring the private tier into `GET /repos/:org/:repo` and `.../history` via an
+  `OptionalApiKeyGuard` that resolves the caller's account without ever blocking public reads)
+  completes the trust-tier model the RFC set out: basic/public (Phases 1-2), verified (Phase 3),
+  and now private (Phase 4). This was the plan's second and final HITL checkpoint — its own
+  highest-scored risk (multi-tenant data leak) — and the live adversarial re-hunt found zero
+  tenant-isolation breaches; the checkpoint's 3 fixed findings (2 HIGH, 1 MEDIUM) were all
+  robustness/availability bugs (a guard that violated its own "never throws" contract on
+  malformed auth headers, incorrectly blocking public reads; a missing UUID-format check on the
+  visibility endpoint causing an uncaught 500; a visibility update scoped by id alone instead of
+  the id+accountId-scoped pattern `SigningKeysService.revoke()` already established), not new
+  confidentiality gaps — so this phase did not warrant its own decision record; the Phase 3 doc
+  above already covers the tenant-isolation precedent these fixes converged on. This new service
+  does not modify the existing scorer or static leaderboard.
+  See `backend/README.md` (added once the build reaches Phase 5) for local dev instructions.
 - **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
   "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
   pass/fail mechanism against NIST AI RMF or OWASP exists, and building one is a distinct,
