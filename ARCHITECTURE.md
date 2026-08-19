@@ -145,9 +145,18 @@ note below for the one exception now under construction):
   above already covers the tenant-isolation precedent these fixes converged on. This new service
   does not modify the existing scorer or static leaderboard.
   See `backend/README.md` (added once the build reaches Phase 5) for local dev instructions.
-  Separately, `docs/plans/2026-08-19-evidence-package-plan.md` Phase 4 shipped the CLI's
-  first-ever key-management capability, `harnesslens keygen [--force]` (`src/keys.ts`) — see
-  `docs/decisions/2026-08-19-cli-keygen-key-management-decision.md` for the decision record.
+  Separately, `docs/plans/2026-08-19-evidence-package-plan.md` shipped the CLI's first-ever
+  key-management and network capability end to end (Phases 4-6): `harnesslens keygen [--force]`
+  (`src/keys.ts`) — see `docs/decisions/2026-08-19-cli-keygen-key-management-decision.md` for the
+  decision record — `harnesslens submit <path> --sign ...` (builds and signs a per-check evidence
+  package client-side and POSTs it to `POST /submissions`), and `harnesslens verify-package
+  <submission-id> --api-url <url>` (fetches `GET /submissions/:id/evidence`, rebuilds the
+  canonical payload locally, and independently checks the Ed25519 signature against the returned
+  public key — never trusting the backend's own claim about it). This closes the roadmap item's
+  original framing end to end: a repo owner can generate a key, produce a signed, per-check
+  evidence package, submit it, and anyone can independently confirm the signature holds — while
+  harnesslens itself still computes no pass/fail accreditation verdict of its own; it only
+  produces evidence that a third party can check.
 - **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
   "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
   pass/fail mechanism against NIST AI RMF or OWASP exists, and building one is a distinct,

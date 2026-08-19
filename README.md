@@ -58,6 +58,7 @@ harnesslens [path] [options]
 harnesslens multi --config <manifest.json> [options]
 harnesslens keygen [--force]
 harnesslens submit <path> --sign --repo-id <org/repo> --commit-sha <sha> --key-id <uuid> --api-url <url>
+harnesslens verify-package <submission-id> --api-url <url>
 
 Options:
   --root <path>         Repo root to audit (default: positional arg, else cwd)
@@ -71,7 +72,7 @@ Options:
   --repo-id <org/repo>   (submit only) required
   --commit-sha <sha>     (submit only) required
   --key-id <uuid>        (submit only) required -- the keyId returned by signing-key registration
-  --api-url <url>        (submit only) required -- backend base URL, e.g. https://api.example.com
+  --api-url <url>        (submit and verify-package only) required -- backend base URL, e.g. https://api.example.com
   --help, -h             Show this help and exit
 ```
 
@@ -99,6 +100,9 @@ harnesslens keygen
 # Scan, sign, and submit an evidence package to a backend instance
 harnesslens submit . --sign --repo-id my-org/my-repo --commit-sha $(git rev-parse HEAD) \
   --key-id <uuid-from-registration> --api-url https://api.example.com
+
+# Independently re-check a submitted evidence package's signature
+harnesslens verify-package <submission-id> --api-url https://api.example.com
 ```
 
 `harnesslens keygen` generates an Ed25519 keypair and writes the private key to
@@ -112,6 +116,15 @@ CLI has no unsigned submission path. `--repo-id` and `--commit-sha` are always e
 never auto-detected from the local `git` state. On success it prints the submission id and the
 backend's own `verified` boolean from the response body; harnesslens itself never computes or
 claims a pass/fail verdict.
+
+`harnesslens verify-package <submission-id> --api-url <url>` closes the loop: it fetches the
+submission's evidence (`GET /submissions/:id/evidence`), rebuilds the exact same canonical payload
+string locally from the returned fields, and independently checks the Ed25519 signature against
+the returned public key — without trusting the backend's own claim about it. It prints
+`signature VALID` (exit 0) or `signature INVALID -- <reason>` (exit 1); an unsigned submission or
+an unknown/malformed submission id also reports a clear, non-throwing `signature INVALID` reason.
+This is what makes the evidence package independently checkable by anyone, not just something
+harnesslens itself asserts.
 
 When run with no explicit config, the CLI's own default composes the `core` pack (39 ported
 upstream checks) **and** the `ai-craft` company pack. Programmatic callers of `runAudit()`

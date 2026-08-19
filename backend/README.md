@@ -163,10 +163,11 @@ revocation is not retroactive on this read path.
 
 ## Canonical payload contract
 
-For a future client SDK implementing verified-tier signing. The server never accepts a
-client-supplied "canonical string" — it always rebuilds this exact string itself from the
-already-validated submission fields before verifying a signature against it
-(`src/signing/canonical-payload.ts`):
+Implemented client-side by the `harnesslens` CLI (`harnesslens keygen`/`submit --sign`/
+`verify-package` — see the root `README.md`) and available for any other client wanting to
+implement verified-tier signing. The server never accepts a client-supplied "canonical string" —
+it always rebuilds this exact string itself from the already-validated submission fields before
+verifying a signature against it (`src/signing/canonical-payload.ts`):
 
 ```ts
 interface CanonicalSubmissionFields {
@@ -207,7 +208,11 @@ canonical string, which is what gets Ed25519-signed:
 
 - Choosing/configuring a hosting or cloud provider.
 - CI workflow wiring (`.github/workflows/*.yml`) for this package.
-- A client SDK for submitters (this README documents the contract; building the SDK is separate).
+- A general-purpose client SDK for third-party languages/runtimes beyond the `harnesslens` CLI
+  itself — this README documents the wire contract so one can be built; the `harnesslens` CLI
+  (`harnesslens keygen`/`submit --sign`/`verify-package`, see the root `README.md`) is the one
+  first-party client that implements it end to end (key generation, signing, submission, and
+  independent signature re-verification).
 - Splitting the Submission API and Query API into separately deployable services.
 - Postgres row-level security for tenant isolation (mandatory-`WHERE`-clause scoping is used
   instead — see the execution plan's Alternatives section).
