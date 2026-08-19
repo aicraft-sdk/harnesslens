@@ -7,6 +7,7 @@ import { Repo } from '../../src/repos/entities/repo.entity';
 import { Submission } from '../../src/submissions/entities/submission.entity';
 import { RejectedSubmission } from '../../src/submissions/entities/rejected-submission.entity';
 import { InitSchema1786633235167 } from '../../src/migrations/1786633235167-InitSchema';
+import { AddChecksToSubmissions1787124757663 } from '../../src/migrations/1787124757663-AddChecksToSubmissions';
 
 // Entities/migrations are passed as imported classes, not glob strings — TypeORM's glob-based
 // loader dynamically `require()`s matched files, which cannot parse .ts source when running
@@ -35,6 +36,24 @@ describe('database schema', () => {
       'signing_keys',
       'submissions',
     ]);
+    await ds.destroy();
+    await container.stop();
+  }, 60_000);
+
+  it('submissions table has a nullable checks jsonb column after migrations', async () => {
+    const container = await new PostgreSqlContainer('postgres:16-alpine').start();
+    const ds = new DataSource({
+      type: 'postgres',
+      url: container.getConnectionUri(),
+      entities: [Account, SigningKey, Repo, Submission, RejectedSubmission],
+      migrations: [InitSchema1786633235167, AddChecksToSubmissions1787124757663],
+    });
+    await ds.initialize();
+    await ds.runMigrations();
+    const cols = await ds.query(
+      `select column_name, is_nullable, data_type from information_schema.columns where table_name = 'submissions' and column_name = 'checks'`,
+    );
+    expect(cols).toEqual([{ column_name: 'checks', is_nullable: 'YES', data_type: 'jsonb' }]);
     await ds.destroy();
     await container.stop();
   }, 60_000);

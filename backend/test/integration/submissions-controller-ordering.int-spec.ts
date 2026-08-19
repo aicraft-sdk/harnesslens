@@ -8,6 +8,7 @@ import { Repo } from '../../src/repos/entities/repo.entity';
 import { Submission } from '../../src/submissions/entities/submission.entity';
 import { RejectedSubmission } from '../../src/submissions/entities/rejected-submission.entity';
 import { InitSchema1786633235167 } from '../../src/migrations/1786633235167-InitSchema';
+import { AddChecksToSubmissions1787124757663 } from '../../src/migrations/1787124757663-AddChecksToSubmissions';
 import { ReposService } from '../../src/repos/repos.service';
 import { SubmissionsService } from '../../src/submissions/submissions.service';
 import { SubmissionsController } from '../../src/submissions/submissions.controller';
@@ -36,7 +37,7 @@ describe('SubmissionsController.create -- validation runs before repo auto-provi
       type: 'postgres',
       url: container.getConnectionUri(),
       entities: [Account, SigningKey, Repo, Submission, RejectedSubmission],
-      migrations: [InitSchema1786633235167],
+      migrations: [InitSchema1786633235167, AddChecksToSubmissions1787124757663],
     });
     await ds.initialize();
     await ds.runMigrations();

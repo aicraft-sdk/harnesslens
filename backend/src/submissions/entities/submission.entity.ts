@@ -27,6 +27,9 @@ export class Submission {
   @Column({ name: 'framework_mapping', type: 'jsonb' })
   frameworkMapping!: unknown;
 
+  @Column({ type: 'jsonb', nullable: true })
+  checks!: unknown;
+
   @Column({ name: 'commit_sha', type: 'varchar', length: 40 })
   commitSha!: string;
 
