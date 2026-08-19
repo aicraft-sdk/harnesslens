@@ -78,4 +78,17 @@ describe('buildCanonicalPayload -- checks[] extension', () => {
     expect(result.includes('remediation')).toBe(false);
     expect(result.includes('docsUrl')).toBe(false);
   });
+
+  it('frameworkMapping entries always serialize nistFunctions before owaspIds, regardless of the input object\'s own key order (a jsonb column reorders object keys on storage/retrieval -- see live-proof finding, Phase 6 of the evidence-package plan)', () => {
+    const fieldsWithReversedKeyOrder: CanonicalSubmissionFields = {
+      ...baseFields,
+      frameworkMapping: { ci: { owaspIds: ['ASI04', 'ASI08'], nistFunctions: ['Measure', 'Manage'] } as never },
+    };
+    const fieldsWithDeclaredKeyOrder: CanonicalSubmissionFields = {
+      ...baseFields,
+      frameworkMapping: { ci: { nistFunctions: ['Measure', 'Manage'], owaspIds: ['ASI04', 'ASI08'] } },
+    };
+    expect(buildCanonicalPayload(fieldsWithReversedKeyOrder)).toBe(buildCanonicalPayload(fieldsWithDeclaredKeyOrder));
+    expect(buildCanonicalPayload(fieldsWithReversedKeyOrder).includes('"nistFunctions":["Measure","Manage"],"owaspIds"')).toBe(true);
+  });
 });
