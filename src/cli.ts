@@ -17,6 +17,7 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAudit } from './api.js';
 import { loadHarnessAuditConfigFile, type HarnessAuditConfig } from './config.js';
+import { generateAndSaveSigningKey } from './keys.js';
 import { aiCraftPack } from './packs/ai-craft/index.js';
 import { renderBadge } from './report/badge.js';
 import { renderMarkdown } from './report/markdown.js';
@@ -42,6 +43,7 @@ const HELP = `harnesslens — extensible AI-harness maturity scorer
 Usage:
   harnesslens [path] [options]
   harnesslens multi --config <manifest.json> [options]
+  harnesslens keygen [--force]
 
 Options:
   --root <path>        Repo root to audit (default: positional arg, else cwd)
@@ -50,17 +52,19 @@ Options:
   --badge <path>        Write an SVG maturity badge to <path>
   --min-level <N>        Exit 1 if the maturity level index is below N
   --config <manifest>    (multi only) JSON manifest of { "repos": [{ "id", "path" }] }
+  --force               (keygen only) overwrite an existing signing key
   --help, -h            Show this help and exit
 `;
 
 interface ParsedArgs {
-  subcommand: 'audit' | 'multi';
+  subcommand: 'audit' | 'multi' | 'keygen';
   root: string;
   json: boolean;
   md: boolean;
   badgePath?: string;
   minLevel?: number;
   manifestPath?: string;
+  force: boolean;
   help: boolean;
 }
 
@@ -72,6 +76,9 @@ function parseArgs(argv: string[]): ParseResult {
   if (rest[0] === 'multi') {
     subcommand = 'multi';
     rest.shift();
+  } else if (rest[0] === 'keygen') {
+    subcommand = 'keygen';
+    rest.shift();
   }
 
   let root: string | undefined;
@@ -80,6 +87,7 @@ function parseArgs(argv: string[]): ParseResult {
   let badgePath: string | undefined;
   let minLevel: number | undefined;
   let manifestPath: string | undefined;
+  let force = false;
   let help = false;
 
   for (let i = 0; i < rest.length; i += 1) {
@@ -94,6 +102,9 @@ function parseArgs(argv: string[]): ParseResult {
         break;
       case '--md':
         md = true;
+        break;
+      case '--force':
+        force = true;
         break;
       case '--root': {
         const value = rest[i + 1];
@@ -141,6 +152,7 @@ function parseArgs(argv: string[]): ParseResult {
       badgePath,
       minLevel,
       manifestPath,
+      force,
       help,
     },
   };
@@ -237,6 +249,27 @@ async function runMultiCommand(args: ParsedArgs, io: CliIO): Promise<CliResult> 
   return { exitCode: 0 };
 }
 
+/** `harnesslens keygen [--force]` -- generates and saves an Ed25519 signing key, then prints the
+ * public key plus a copy-pasteable registration command. Never prints the private key. */
+async function runKeygenCommand(io: CliIO, force: boolean): Promise<CliResult> {
+  try {
+    const { publicKeyBase64, keyFilePath } = generateAndSaveSigningKey({ force });
+    io.stdout(`Ed25519 signing key generated and saved to ${keyFilePath} (permissions 0600).\n`);
+    io.stdout(`Public key (base64): ${publicKeyBase64}\n\n`);
+    io.stdout('Register it with your account (replace <accountId>, <apiKey> with your own):\n');
+    io.stdout(
+      `  curl -X POST <api-url>/accounts/<accountId>/signing-keys \\\n` +
+        `    -H "Authorization: Bearer <apiKey>" -H "Content-Type: application/json" \\\n` +
+        `    -d '{"publicKey":"${publicKeyBase64}"}'\n\n`,
+    );
+    io.stdout('Save the returned keyId -- pass it to `harnesslens submit --sign --key-id <keyId>`.\n');
+    return { exitCode: 0 };
+  } catch (error) {
+    io.stderr(`harnesslens keygen: ${error instanceof Error ? error.message : String(error)}\n`);
+    return { exitCode: 1 };
+  }
+}
+
 /** CLI entry point. Tests call this directly with a fake `io`; the real bin (`isMainModule` guard below) uses `defaultIO`. */
 export async function main(argv: string[], io: CliIO = defaultIO): Promise<CliResult> {
   const parsed = parseArgs(argv);
@@ -251,6 +284,9 @@ export async function main(argv: string[], io: CliIO = defaultIO): Promise<CliRe
     return { exitCode: 0 };
   }
 
+  if (args.subcommand === 'keygen') {
+    return runKeygenCommand(io, args.force);
+  }
   return args.subcommand === 'multi' ? runMultiCommand(args, io) : runAuditCommand(args, io);
 }
 

@@ -221,3 +221,36 @@ describe('harnesslens CLI — --help', () => {
     expect(stdoutLines.join('')).toContain('Usage:');
   });
 });
+
+describe('harnesslens keygen', () => {
+  let tmpHome: string;
+  const originalHome = process.env.HOME;
+
+  beforeEach(() => {
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-cli-keygen-test-'));
+    process.env.HOME = tmpHome;
+  });
+  afterEach(() => {
+    process.env.HOME = originalHome;
+    fs.rmSync(tmpHome, { recursive: true, force: true });
+  });
+
+  it('prints the public key and a registration command, exits 0', async () => {
+    const { io, stdoutLines } = makeIO();
+    const result = await main(['keygen'], io);
+    expect(result.exitCode).toBe(0);
+    const out = stdoutLines.join('');
+    expect(out).toContain('Public key (base64):');
+    expect(out).toContain('signing-keys');
+    expect(out).not.toMatch(/private/i); // never print the word "private key" value itself
+  });
+
+  it('exits 1 with an actionable message when a key already exists and --force is not passed', async () => {
+    const { io: io1 } = makeIO();
+    await main(['keygen'], io1);
+    const { io: io2, stderrLines } = makeIO();
+    const result = await main(['keygen'], io2);
+    expect(result.exitCode).toBe(1);
+    expect(stderrLines.join('')).toMatch(/already exists/i);
+  });
+});
