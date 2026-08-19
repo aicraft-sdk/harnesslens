@@ -57,6 +57,7 @@ for the submission schema and how to submit your repo's score.
 harnesslens [path] [options]
 harnesslens multi --config <manifest.json> [options]
 harnesslens keygen [--force]
+harnesslens submit <path> --sign --repo-id <org/repo> --commit-sha <sha> --key-id <uuid> --api-url <url>
 
 Options:
   --root <path>         Repo root to audit (default: positional arg, else cwd)
@@ -66,6 +67,11 @@ Options:
   --min-level <N>        Exit 1 if the maturity level index is below N
   --config <manifest>    (multi only) JSON manifest of { "repos": [{ "id", "path" }] }
   --force                (keygen only) overwrite an existing signing key
+  --sign                 (submit only) required -- sign the submission with the local key
+  --repo-id <org/repo>   (submit only) required
+  --commit-sha <sha>     (submit only) required
+  --key-id <uuid>        (submit only) required -- the keyId returned by signing-key registration
+  --api-url <url>        (submit only) required -- backend base URL, e.g. https://api.example.com
   --help, -h             Show this help and exit
 ```
 
@@ -89,12 +95,23 @@ harnesslens multi --config ./repos.json --json
 
 # Generate a local Ed25519 signing key (for later signed submission flows)
 harnesslens keygen
+
+# Scan, sign, and submit an evidence package to a backend instance
+harnesslens submit . --sign --repo-id my-org/my-repo --commit-sha $(git rev-parse HEAD) \
+  --key-id <uuid-from-registration> --api-url https://api.example.com
 ```
 
 `harnesslens keygen` generates an Ed25519 keypair and writes the private key to
 `~/.harnesslens/signing-key.json` (mode `0600`, parent directory `0700`), then prints the base64
 public key plus a copy-pasteable registration command. It never prints or transmits the private
 key, and never overwrites an existing key file unless `--force` is passed.
+
+`harnesslens submit` runs a scan, signs the resulting evidence package with the local key from
+`harnesslens keygen`, and POSTs it to `<api-url>/submissions`. `--sign` is always required — this
+CLI has no unsigned submission path. `--repo-id` and `--commit-sha` are always explicit flags,
+never auto-detected from the local `git` state. On success it prints the submission id and the
+backend's own `verified` boolean from the response body; harnesslens itself never computes or
+claims a pass/fail verdict.
 
 When run with no explicit config, the CLI's own default composes the `core` pack (39 ported
 upstream checks) **and** the `ai-craft` company pack. Programmatic callers of `runAudit()`
