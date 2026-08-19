@@ -24,6 +24,7 @@ import { renderBadge } from './report/badge.js';
 import { renderMarkdown } from './report/markdown.js';
 import { renderTerminal } from './report/terminal.js';
 import { loadRepoManifest, runMultiRepoAudit, type MultiRepoReport } from './multi-repo.js';
+import { verifyPackage } from './verify-package.js';
 
 export interface CliIO {
   stdout: (s: string) => boolean;
@@ -46,6 +47,7 @@ Usage:
   harnesslens multi --config <manifest.json> [options]
   harnesslens keygen [--force]
   harnesslens submit <path> --sign --repo-id <org/repo> --commit-sha <sha> --key-id <uuid> --api-url <url>
+  harnesslens verify-package <submission-id> --api-url <url>
 
 Options:
   --root <path>        Repo root to audit (default: positional arg, else cwd)
@@ -59,12 +61,12 @@ Options:
   --repo-id <org/repo>   (submit only) required
   --commit-sha <sha>     (submit only) required
   --key-id <uuid>        (submit only) required -- the keyId returned by signing-key registration
-  --api-url <url>        (submit only) required -- backend base URL, e.g. https://api.example.com
+  --api-url <url>        (submit and verify-package only) required -- backend base URL, e.g. https://api.example.com
   --help, -h            Show this help and exit
 `;
 
 interface ParsedArgs {
-  subcommand: 'audit' | 'multi' | 'keygen' | 'submit';
+  subcommand: 'audit' | 'multi' | 'keygen' | 'submit' | 'verify-package';
   root: string;
   json: boolean;
   md: boolean;
@@ -77,6 +79,7 @@ interface ParsedArgs {
   commitSha?: string;
   keyId?: string;
   apiUrl?: string;
+  submissionId?: string;
   help: boolean;
 }
 
@@ -94,6 +97,9 @@ function parseArgs(argv: string[]): ParseResult {
   } else if (rest[0] === 'submit') {
     subcommand = 'submit';
     rest.shift();
+  } else if (rest[0] === 'verify-package') {
+    subcommand = 'verify-package';
+    rest.shift();
   }
 
   let root: string | undefined;
@@ -108,6 +114,7 @@ function parseArgs(argv: string[]): ParseResult {
   let commitSha: string | undefined;
   let keyId: string | undefined;
   let apiUrl: string | undefined;
+  let submissionId: string | undefined;
   let help = false;
 
   for (let i = 0; i < rest.length; i += 1) {
@@ -189,6 +196,11 @@ function parseArgs(argv: string[]): ParseResult {
       default:
         if (arg === undefined) break;
         if (arg.startsWith('--')) return { error: `unknown flag: ${arg}` };
+        if (subcommand === 'verify-package') {
+          if (submissionId !== undefined) return { error: `unexpected argument: ${arg}` };
+          submissionId = arg;
+          break;
+        }
         if (root !== undefined) return { error: `unexpected argument: ${arg}` };
         root = arg;
     }
@@ -209,6 +221,7 @@ function parseArgs(argv: string[]): ParseResult {
       commitSha,
       keyId,
       apiUrl,
+      submissionId,
       help,
     },
   };
@@ -407,6 +420,30 @@ async function runSubmitCommand(args: ParsedArgs, io: CliIO, fetchImpl: typeof f
   return { exitCode: 0 };
 }
 
+/** `harnesslens verify-package <submission-id> --api-url <url>` -- fetches
+ * `GET /submissions/:id/evidence`, rebuilds the canonical payload locally, and verifies the
+ * signature independently of the backend's own claim (Task 6.1's `verifyPackage`). Prints only
+ * guard-safe language -- never claims certification or an audited-secure status, "signature
+ * valid/invalid" only (`no-certification-claims.spec.ts`). */
+async function runVerifyPackageCommand(args: ParsedArgs, io: CliIO, fetchImpl: typeof fetch): Promise<CliResult> {
+  if (!args.submissionId) {
+    io.stderr('harnesslens verify-package: a submission id is required\n');
+    return { exitCode: 1 };
+  }
+  if (!args.apiUrl) {
+    io.stderr('harnesslens verify-package: --api-url is required\n');
+    return { exitCode: 1 };
+  }
+
+  const result = await verifyPackage(args.submissionId, args.apiUrl, fetchImpl);
+  if (result.valid) {
+    io.stdout('harnesslens verify-package: signature VALID -- the evidence package matches what was signed.\n');
+    return { exitCode: 0 };
+  }
+  io.stdout(`harnesslens verify-package: signature INVALID -- ${result.reason}.\n`);
+  return { exitCode: 1 };
+}
+
 export interface CliDeps {
   fetchImpl?: typeof fetch;
 }
@@ -430,6 +467,9 @@ export async function main(argv: string[], io: CliIO = defaultIO, deps: CliDeps 
   }
   if (args.subcommand === 'submit') {
     return runSubmitCommand(args, io, deps.fetchImpl ?? fetch);
+  }
+  if (args.subcommand === 'verify-package') {
+    return runVerifyPackageCommand(args, io, deps.fetchImpl ?? fetch);
   }
   return args.subcommand === 'multi' ? runMultiCommand(args, io) : runAuditCommand(args, io);
 }

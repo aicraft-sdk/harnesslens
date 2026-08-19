@@ -1,9 +1,11 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { generateKeyPairSync, sign } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { main } from './cli.js';
+import { buildCanonicalPayload, type CanonicalSubmissionFields } from './canonical-payload.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES_ROOT = path.resolve(__dirname, '../test/fixtures');
@@ -318,5 +320,45 @@ describe('harnesslens submit --sign', () => {
 
     expect(result.exitCode).toBe(1);
     expect(stderrLines.join('')).toContain('invalid signature');
+  });
+});
+
+describe('harnesslens verify-package', () => {
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const rawPublicKeyBase64 = Buffer.from(
+    (publicKey.export({ format: 'jwk' }) as { x: string }).x,
+    'base64url',
+  ).toString('base64');
+  const fields: CanonicalSubmissionFields = {
+    repoId: 'acme/widgets', score: 80, level: { index: 3, name: 'L3' },
+    dimensions: [], frameworkMapping: {}, commitSha: 'a1b2c3d', scannedAt: '2026-08-13T00:00:00.000Z',
+  };
+  const signature = sign(null, Buffer.from(buildCanonicalPayload(fields), 'utf8'), privateKey).toString('base64');
+  const validEvidence = {
+    ...fields, id: 'sub-1', verified: true, signature, keyId: 'key-1', publicKey: rawPublicKeyBase64, checks: null,
+  };
+  const tamperedEvidence = { ...validEvidence, commitSha: 'TAMPERED' };
+
+  it('prints "signature VALID" and exits 0 for a valid package', async () => {
+    const { io, stdoutLines } = makeIO();
+    const fakeFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => validEvidence });
+    const result = await main(['verify-package', 'sub-1', '--api-url', 'http://x'], io, { fetchImpl: fakeFetch });
+    expect(result.exitCode).toBe(0);
+    expect(stdoutLines.join('')).toContain('signature VALID');
+  });
+
+  it('prints "signature INVALID" and exits 1 for a tampered package', async () => {
+    const { io, stdoutLines } = makeIO();
+    const fakeFetch = vi.fn().mockResolvedValue({ ok: true, json: async () => tamperedEvidence });
+    const result = await main(['verify-package', 'sub-1', '--api-url', 'http://x'], io, { fetchImpl: fakeFetch });
+    expect(result.exitCode).toBe(1);
+    expect(stdoutLines.join('')).toContain('signature INVALID');
+  });
+
+  it('exits 1 with an actionable error when --api-url is omitted', async () => {
+    const { io, stderrLines } = makeIO();
+    const result = await main(['verify-package', 'sub-1'], io);
+    expect(result.exitCode).toBe(1);
+    expect(stderrLines.join('')).toMatch(/--api-url/);
   });
 });
