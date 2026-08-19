@@ -28,7 +28,15 @@ export class Submission {
   frameworkMapping!: unknown;
 
   @Column({ type: 'jsonb', nullable: true })
-  checks!: unknown;
+  checks!: Array<{
+    id: string;
+    dimension: string;
+    title: string;
+    points: number;
+    earned: number;
+    passed: boolean;
+    evidence: string;
+  }> | null;
 
   @Column({ name: 'commit_sha', type: 'varchar', length: 40 })
   commitSha!: string;

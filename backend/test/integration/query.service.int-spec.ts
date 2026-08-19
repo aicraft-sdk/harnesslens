@@ -8,7 +8,7 @@ import { Repo } from '../../src/repos/entities/repo.entity';
 import { Submission } from '../../src/submissions/entities/submission.entity';
 import { RejectedSubmission } from '../../src/submissions/entities/rejected-submission.entity';
 import { InitSchema1786633235167 } from '../../src/migrations/1786633235167-InitSchema';
-import { AddChecksToSubmissions1787124757663 } from '../../src/migrations/1787124757663-AddChecksToSubmissions';
+import { AddChecksToSubmissions1787126020558 } from '../../src/migrations/1787126020558-AddChecksToSubmissions';
 import { QueryService } from '../../src/query/query.service';
 
 describe('QueryService.getPrivateHistory', () => {
@@ -25,7 +25,7 @@ describe('QueryService.getPrivateHistory', () => {
       type: 'postgres',
       url: container.getConnectionUri(),
       entities: [Account, SigningKey, Repo, Submission, RejectedSubmission],
-      migrations: [InitSchema1786633235167, AddChecksToSubmissions1787124757663],
+      migrations: [InitSchema1786633235167, AddChecksToSubmissions1787126020558],
     });
     await ds.initialize();
     await ds.runMigrations();
