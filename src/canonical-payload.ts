@@ -32,10 +32,16 @@ export interface CanonicalSubmissionFields {
 }
 
 export function buildCanonicalPayload(f: CanonicalSubmissionFields): string {
+  // Each entry is rebuilt with an explicit, fixed key order (nistFunctions, then owaspIds) --
+  // never `f.frameworkMapping[k]` passed through as-is -- because a value that has round-tripped
+  // through a `jsonb` database column comes back with its object keys reordered by PostgreSQL
+  // (jsonb does not preserve insertion order), which would otherwise silently change the
+  // canonical string and invalidate every verified-tier signature once evidence is re-fetched
+  // (found during Phase 6's live end-to-end proof against a real backend).
   const sortedMapping = Object.fromEntries(
     Object.keys(f.frameworkMapping)
       .sort()
-      .map((k) => [k, f.frameworkMapping[k]]),
+      .map((k) => [k, { nistFunctions: f.frameworkMapping[k]!.nistFunctions, owaspIds: f.frameworkMapping[k]!.owaspIds }]),
   );
 
   const payload: Record<string, unknown> = {

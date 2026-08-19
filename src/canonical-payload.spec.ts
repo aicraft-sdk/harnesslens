@@ -31,4 +31,19 @@ describe('buildCanonicalPayload (CLI) -- cross-package golden-file parity with b
         '"commitSha":"a1b2c3d","scannedAt":"2026-08-13T00:00:00.000Z"}',
     );
   });
+
+  it('frameworkMapping entries always serialize nistFunctions before owaspIds, regardless of the input object\'s own key order (PostgreSQL jsonb columns reorder object keys by length on storage/retrieval -- see live-proof finding, Phase 6)', () => {
+    const fieldsWithReversedKeyOrder: CanonicalSubmissionFields = {
+      ...baseFields,
+      // Deliberately owaspIds before nistFunctions -- simulates a value that round-tripped
+      // through a jsonb column and came back with keys reordered by Postgres.
+      frameworkMapping: { ci: { owaspIds: ['ASI04', 'ASI08'], nistFunctions: ['Measure', 'Manage'] } as never },
+    };
+    const fieldsWithDeclaredKeyOrder: CanonicalSubmissionFields = {
+      ...baseFields,
+      frameworkMapping: { ci: { nistFunctions: ['Measure', 'Manage'], owaspIds: ['ASI04', 'ASI08'] } },
+    };
+    expect(buildCanonicalPayload(fieldsWithReversedKeyOrder)).toBe(buildCanonicalPayload(fieldsWithDeclaredKeyOrder));
+    expect(buildCanonicalPayload(fieldsWithReversedKeyOrder).includes('"nistFunctions":["Measure","Manage"],"owaspIds"')).toBe(true);
+  });
 });
