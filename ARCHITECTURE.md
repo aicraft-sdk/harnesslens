@@ -152,7 +152,10 @@ note below for the one exception now under construction):
   package client-side and POSTs it to `POST /submissions`), and `harnesslens verify-package
   <submission-id> --api-url <url>` (fetches `GET /submissions/:id/evidence`, rebuilds the
   canonical payload locally, and independently checks the Ed25519 signature against the returned
-  public key — never trusting the backend's own claim about it). This closes the roadmap item's
+  public key — never trusting the backend's own claim about it; see
+  `docs/decisions/2026-08-19-cli-verify-package-independent-verification-decision.md` for the
+  decision record, including the five remediation cycles that hardened it against malformed/
+  adversarial server responses). This closes the roadmap item's
   original framing end to end: a repo owner can generate a key, produce a signed, per-check
   evidence package, submit it, and anyone can independently confirm the signature holds — while
   harnesslens itself still computes no pass/fail accreditation verdict of its own; it only
