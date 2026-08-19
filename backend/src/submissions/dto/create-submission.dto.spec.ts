@@ -39,4 +39,42 @@ describe('CreateSubmissionDto', () => {
     const errors = await validate(dto);
     expect(errors.length).toBeGreaterThan(0);
   });
+
+  const checksPayload = [
+    {
+      id: 'CTX-01',
+      dimension: 'context',
+      title: 'Has AGENTS.md',
+      points: 5,
+      earned: 5,
+      passed: true,
+      evidence: 'Found AGENTS.md at repo root',
+    },
+  ];
+
+  it('accepts a valid payload with checks[]', async () => {
+    const dto = plainToInstance(CreateSubmissionDto, { ...validPayload, checks: checksPayload });
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('accepts a payload with no checks[] at all (checks stays optional)', async () => {
+    const dto = plainToInstance(CreateSubmissionDto, validPayload);
+    expect(await validate(dto)).toHaveLength(0);
+  });
+
+  it('rejects a check with id "__proto__"', async () => {
+    const dto = plainToInstance(CreateSubmissionDto, {
+      ...validPayload,
+      checks: [{ ...checksPayload[0], id: '__proto__' }],
+    });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('rejects a check missing the required "passed" boolean', async () => {
+    const { passed, ...withoutPassed } = checksPayload[0]!;
+    const dto = plainToInstance(CreateSubmissionDto, { ...validPayload, checks: [withoutPassed] });
+    const errors = await validate(dto);
+    expect(errors.length).toBeGreaterThan(0);
+  });
 });

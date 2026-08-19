@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { IsArray, IsISO8601, IsNumber, IsObject, IsOptional, IsString, Matches, Max, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsISO8601, IsNumber, IsObject, IsOptional, IsString, Matches, Max, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 const REPO_ID_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]*\/[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
@@ -19,6 +19,16 @@ class DimensionDto {
   @IsNumber() percent!: number;
 }
 
+class CheckDto {
+  @IsString() @Matches(SAFE_ID_RE) id!: string;
+  @IsString() dimension!: string;
+  @IsString() title!: string;
+  @IsNumber() points!: number;
+  @IsNumber() earned!: number;
+  @IsBoolean() passed!: boolean;
+  @IsString() evidence!: string;
+}
+
 // Deliberately no class-level @Exclude()/@Expose(): NestJS's ValidationPipe reuses this same
 // class-transformer strategy internally when it builds the instance to validate, so a class-level
 // @Exclude() would silently strip an "extra" field before class-validator's own
@@ -34,6 +44,11 @@ export class CreateSubmissionDto {
   @IsNumber() @Max(999.99) score!: number;
   @ValidateNested() @Type(() => LevelDto) level!: LevelDto;
   @IsArray() @ValidateNested({ each: true }) @Type(() => DimensionDto) dimensions!: DimensionDto[];
+  // Optional, mirrors dimensions[]'s validation pattern -- remediation/docsUrl deliberately
+  // excluded (Durable Decision 3). SAFE_ID_RE here is the DTO-layer half of the two-layer
+  // dangerous-key defense; submissions.service.ts's isDangerousKey loop is the other half
+  // (Durable Decision 4).
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => CheckDto) checks?: CheckDto[];
   @IsObject() frameworkMapping!: Record<string, { nistFunctions: string[]; owaspIds: string[] }>;
   @Matches(SHA_RE) commitSha!: string;
   @IsISO8601() scannedAt!: string;
