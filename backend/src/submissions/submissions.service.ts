@@ -21,6 +21,15 @@ export interface InsertableSubmissionFields {
   score: string;
   level: { index: number; name: string };
   dimensions: Array<{ id: string; title: string; earned: number; max: number; percent: number }>;
+  checks: Array<{
+    id: string;
+    dimension: string;
+    title: string;
+    points: number;
+    earned: number;
+    passed: boolean;
+    evidence: string;
+  }> | null;
   frameworkMapping: Record<string, { nistFunctions: string[]; owaspIds: string[] }>;
   commitSha: string;
   scannedAt: Date;
@@ -60,6 +69,12 @@ export class SubmissionsService {
       }
     }
 
+    for (const check of dto.checks ?? []) {
+      if (isDangerousKey(check.id)) {
+        return { ok: false, reason: `checks contains a dangerous key: ${check.id}` };
+      }
+    }
+
     const frameworkMapping: Record<string, { nistFunctions: string[]; owaspIds: string[] }> = {};
     for (const [key, value] of Object.entries(dto.frameworkMapping)) {
       if (isDangerousKey(key)) {
@@ -83,10 +98,22 @@ export class SubmissionsService {
       percent: d.percent,
     }));
 
+    const reconstructedChecks =
+      dto.checks?.map((c) => ({
+        id: c.id,
+        dimension: c.dimension,
+        title: c.title,
+        points: c.points,
+        earned: c.earned,
+        passed: c.passed,
+        evidence: c.evidence,
+      })) ?? null;
+
     const row: InsertableSubmissionFields = {
       score: String(dto.score),
       level: { index: dto.level.index, name: dto.level.name },
       dimensions: reconstructedDimensions,
+      checks: reconstructedChecks,
       frameworkMapping,
       commitSha: dto.commitSha,
       scannedAt: new Date(dto.scannedAt),
@@ -103,7 +130,12 @@ export class SubmissionsService {
         return { ok: false, reason: INVALID_SIGNATURE_REASON };
       }
 
-      const verified = await this.verifySignedSubmission(dto, reconstructedDimensions, frameworkMapping);
+      const verified = await this.verifySignedSubmission(
+        dto,
+        reconstructedDimensions,
+        reconstructedChecks,
+        frameworkMapping,
+      );
       if (!verified) {
         return { ok: false, reason: INVALID_SIGNATURE_REASON };
       }
@@ -145,6 +177,7 @@ export class SubmissionsService {
   private async verifySignedSubmission(
     dto: CreateSubmissionDto,
     dimensions: InsertableSubmissionFields['dimensions'],
+    checks: InsertableSubmissionFields['checks'],
     frameworkMapping: InsertableSubmissionFields['frameworkMapping'],
   ): Promise<boolean> {
     const signingKey = await this.signingKeysRepo.findOneBy({ keyId: dto.keyId });
@@ -168,6 +201,7 @@ export class SubmissionsService {
       score: dto.score,
       level: { index: dto.level.index, name: dto.level.name },
       dimensions,
+      checks: checks ?? undefined,
       frameworkMapping,
       commitSha: dto.commitSha,
       scannedAt: dto.scannedAt,

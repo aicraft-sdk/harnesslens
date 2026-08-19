@@ -18,6 +18,18 @@ const validDto: CreateSubmissionDto = {
   scannedAt: '2026-08-13T00:00:00.000Z',
 } as CreateSubmissionDto;
 
+const validChecks = [
+  {
+    id: 'CTX-01',
+    dimension: 'context',
+    title: 'Has AGENTS.md',
+    points: 5,
+    earned: 5,
+    passed: true,
+    evidence: 'Found AGENTS.md at repo root',
+  },
+];
+
 describe('SubmissionsService.buildInsertableSubmission', () => {
   // Basic-tier DTOs used throughout this file never set `keyId`, so the signing-key/accounts/repos
   // repositories are never consulted -- stubbed only to satisfy the constructor's dependencies.
@@ -34,6 +46,7 @@ describe('SubmissionsService.buildInsertableSubmission', () => {
         score: String(validDto.score),
         level: validDto.level,
         dimensions: validDto.dimensions,
+        checks: null,
         frameworkMapping: {},
         commitSha: validDto.commitSha,
         scannedAt: new Date(validDto.scannedAt),
@@ -110,6 +123,41 @@ describe('SubmissionsService.buildInsertableSubmission', () => {
     const result = await service.buildInsertableSubmission(dto);
     expect(result.ok).toBe(true);
     expect(result.ok && (result.row as unknown as { maliciousExtra?: unknown }).maliciousExtra).toBeUndefined();
+  });
+
+  it('reconstructs checks[] field-by-field into the insertable row when present', async () => {
+    const dto = { ...validDto, checks: validChecks } as CreateSubmissionDto;
+    const result = await service.buildInsertableSubmission(dto);
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.row.checks).toEqual(validChecks);
+  });
+
+  it('stores checks as null when the submission omits checks[] entirely', async () => {
+    const result = await service.buildInsertableSubmission(validDto);
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.row.checks).toBeNull();
+  });
+
+  it('rejects a submission with a dangerous checks[].id (fail-closed, mirrors dimensions[].id)', async () => {
+    const dto = {
+      ...validDto,
+      checks: [{ ...validChecks[0], id: '__proto__' }],
+    } as CreateSubmissionDto;
+    const result = await service.buildInsertableSubmission(dto);
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.reason).toBe('checks contains a dangerous key: __proto__');
+  });
+
+  it('never spreads the raw DTO checks[] into the insert row', async () => {
+    const dto = {
+      ...validDto,
+      checks: [{ ...validChecks[0], maliciousExtra: 'nope' }],
+    } as unknown as CreateSubmissionDto;
+    const result = await service.buildInsertableSubmission(dto);
+    expect(result.ok).toBe(true);
+    expect(
+      result.ok && (result.row.checks?.[0] as unknown as { maliciousExtra?: unknown }).maliciousExtra,
+    ).toBeUndefined();
   });
 });
 
@@ -325,5 +373,82 @@ describe('SubmissionsService.buildInsertableSubmission -- verified-tier signatur
       ok: false,
       reason: 'invalid signature',
     });
+  });
+
+  it('a verified-tier submission with checks[] verifies against the extended canonical payload', async () => {
+    const dtoWithChecks: CreateSubmissionDto = {
+      ...validDto,
+      checks: validChecks,
+      keyId: 'key-1',
+      signature: '',
+    } as CreateSubmissionDto;
+    const fields: CanonicalSubmissionFields = {
+      repoId: dtoWithChecks.repoId,
+      score: dtoWithChecks.score,
+      level: dtoWithChecks.level,
+      dimensions: dtoWithChecks.dimensions,
+      checks: validChecks,
+      frameworkMapping: dtoWithChecks.frameworkMapping,
+      commitSha: dtoWithChecks.commitSha,
+      scannedAt: dtoWithChecks.scannedAt,
+    };
+    dtoWithChecks.signature = sign(null, Buffer.from(buildCanonicalPayload(fields), 'utf8'), privateKey).toString(
+      'base64',
+    );
+
+    const signingKeysRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({
+        keyId: 'key-1',
+        accountId: 'shared-account',
+        publicKey: publicKeyBase64,
+        revokedAt: null,
+      } as SigningKey),
+    } as unknown as Repository<SigningKey>;
+    const accountsRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Account>;
+    const reposRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({ id: 'repo-uuid', accountId: 'shared-account' } as Repo),
+    } as unknown as Repository<Repo>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
+
+    const result = await service.buildInsertableSubmission(dtoWithChecks);
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.row.verified).toBe(true);
+    expect(result.ok && result.row.checks).toEqual(validChecks);
+  });
+
+  it('a verified-tier submission whose signature was computed WITHOUT checks[] fails when checks[] is added to the request body (tamper/downgrade rejection)', async () => {
+    // Signs the OLD (no-checks) canonical payload but attaches checks[] to the request anyway --
+    // must be rejected outright, not silently accepted with checks[] stripped.
+    const oldFields: CanonicalSubmissionFields = {
+      repoId: validDto.repoId,
+      score: validDto.score,
+      level: validDto.level,
+      dimensions: validDto.dimensions,
+      frameworkMapping: validDto.frameworkMapping,
+      commitSha: validDto.commitSha,
+      scannedAt: validDto.scannedAt,
+    };
+    const signature = sign(null, Buffer.from(buildCanonicalPayload(oldFields), 'utf8'), privateKey).toString(
+      'base64',
+    );
+    const dto = { ...validDto, checks: validChecks, keyId: 'key-1', signature } as CreateSubmissionDto;
+
+    const signingKeysRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({
+        keyId: 'key-1',
+        accountId: 'shared-account',
+        publicKey: publicKeyBase64,
+        revokedAt: null,
+      } as SigningKey),
+    } as unknown as Repository<SigningKey>;
+    const accountsRepoStub = { findOneBy: vi.fn() } as unknown as Repository<Account>;
+    const reposRepoStub = {
+      findOneBy: vi.fn().mockResolvedValue({ id: 'repo-uuid', accountId: 'shared-account' } as Repo),
+    } as unknown as Repository<Repo>;
+    const service = new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub);
+
+    const result = await service.buildInsertableSubmission(dto);
+    expect(result.ok).toBe(false);
+    expect(result.ok === false && result.reason).toBe('invalid signature');
   });
 });
