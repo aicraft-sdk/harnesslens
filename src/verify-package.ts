@@ -21,15 +21,29 @@ export async function verifyPackage(
   apiUrl: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<VerifyPackageResult> {
-  const res = await fetchImpl(`${apiUrl}/submissions/${submissionId}/evidence`);
+  let res: Awaited<ReturnType<typeof fetch>>;
+  try {
+    res = await fetchImpl(`${apiUrl}/submissions/${submissionId}/evidence`);
+  } catch (error) {
+    return { valid: false, reason: `request failed -- ${error instanceof Error ? error.message : String(error)}` };
+  }
   if (!res.ok) {
     return { valid: false, reason: res.status === 404 ? 'submission not found' : `request failed (${res.status})` };
   }
-  const body = (await res.json()) as CanonicalSubmissionFields & {
+  let body: CanonicalSubmissionFields & {
     signature: string | null;
     keyId: string | null;
     publicKey: string | null;
   };
+  try {
+    body = (await res.json()) as CanonicalSubmissionFields & {
+      signature: string | null;
+      keyId: string | null;
+      publicKey: string | null;
+    };
+  } catch {
+    return { valid: false, reason: 'could not parse evidence response' };
+  }
   if (!body.signature || !body.publicKey) {
     return { valid: false, reason: 'submission is unsigned -- nothing to cryptographically verify' };
   }

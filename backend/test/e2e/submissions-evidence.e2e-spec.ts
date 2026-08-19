@@ -32,7 +32,20 @@ const validSubmissionFields: CanonicalSubmissionFields = {
       evidence: 'Found AGENTS.md at repo root',
     },
   ],
-  frameworkMapping: {},
+  // Non-empty, so this fixture actually exercises frameworkMapping through a real Postgres jsonb
+  // round trip -- an empty `{}` (as this field previously was) has no entry keys that could ever
+  // be reordered, so it can never exercise the jsonb-key-reordering bug this test is meant to
+  // guard against. PostgreSQL's jsonb column does not preserve an object's original key insertion
+  // order -- it always normalizes to its own internal key order on storage/retrieval -- so a
+  // signed submission's `frameworkMapping` entry read back via `GET /submissions/:id/evidence`
+  // (see this test's reconstruction step below, mimicking a real third-party verifier) can come
+  // back with a different per-entry key order than what was originally signed, unless
+  // buildCanonicalPayload rebuilds each entry with an explicit, fixed key order rather than
+  // passing the DB-round-tripped value through as-is (the exact bug found during Phase 6's live
+  // end-to-end proof, fixed in canonical-payload.ts).
+  frameworkMapping: {
+    ci: { nistFunctions: ['Measure', 'Manage'], owaspIds: ['ASI04', 'ASI08'] },
+  },
   commitSha: 'a1b2c3d',
   scannedAt: '2026-08-13T00:00:00.000Z',
 };

@@ -144,6 +144,14 @@ owning account (via `Authorization: Bearer <apiKey>`) gets 200. A submission who
 later revoked still returns its historical signature/payload/publicKey as originally stored —
 revocation is not retroactive on this read path.
 
+**Field order is not guaranteed.** `dimensions`, `checks`, and `frameworkMapping` in this
+response are sourced directly from `jsonb` columns, which do not preserve original key insertion
+order. This endpoint is display-only — it never re-serializes these fields into a canonical form.
+A caller reconstructing a canonical payload to verify `signature` locally must rebuild each field
+in the fixed key order documented in "Canonical payload contract" above rather than assume the
+raw response body's own key order — exactly what `buildCanonicalPayload` (and the `harnesslens`
+CLI's `verify-package` command, which calls it) already does.
+
 ### Known v1 limitations (not silently hidden)
 
 - **No rate limiting on `POST /accounts`, signing-key, or repo-visibility endpoints** — only
@@ -190,8 +198,11 @@ interface CanonicalSubmissionFields {
 `buildCanonicalPayload(fields)` produces a single `JSON.stringify(...)` of an object with exactly
 this key order — `repoId, score, level, dimensions, checks, frameworkMapping, commitSha,
 scannedAt` (`checks` present only when `fields.checks !== undefined`) — with `frameworkMapping`'s
-own keys sorted alphabetically first. The same logical payload always produces a byte-identical
-canonical string, which is what gets Ed25519-signed:
+own keys sorted alphabetically first, and each `frameworkMapping` entry's own nested keys always
+serialized in the fixed order `nistFunctions, owaspIds` — never passed through as-is — because a
+value read back from the `submissions` table's `frameworkMapping` `jsonb` column does not
+preserve its original key insertion order. The same logical payload always produces a
+byte-identical canonical string, which is what gets Ed25519-signed:
 
 - **Keys:** exchanged as base64-encoded raw 32-byte Ed25519 public keys (registered via `POST
   /accounts/:accountId/signing-keys`) and base64-encoded raw 64-byte signatures (submitted as

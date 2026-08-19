@@ -47,4 +47,23 @@ describe('verifyPackage', () => {
     expect(result.valid).toBe(false);
     expect(result.reason).toMatch(/not found/i);
   });
+
+  it('reports valid: false (never throws) when the fetch itself fails (network error)', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+    const result = await verifyPackage('sub-1', 'http://x', fetchImpl as unknown as typeof fetch);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('request failed -- ECONNREFUSED');
+  });
+
+  it('reports valid: false (never throws) when the response body is not valid JSON', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError('Unexpected token in JSON');
+      },
+    });
+    const result = await verifyPackage('sub-1', 'http://x', fetchImpl as unknown as typeof fetch);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('could not parse evidence response');
+  });
 });
