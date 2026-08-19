@@ -145,6 +145,9 @@ note below for the one exception now under construction):
   above already covers the tenant-isolation precedent these fixes converged on. This new service
   does not modify the existing scorer or static leaderboard.
   See `backend/README.md` (added once the build reaches Phase 5) for local dev instructions.
+  Separately, `docs/plans/2026-08-19-evidence-package-plan.md` Phase 4 shipped the CLI's
+  first-ever key-management capability, `harnesslens keygen [--force]` (`src/keys.ts`) — see
+  `docs/decisions/2026-08-19-cli-keygen-key-management-decision.md` for the decision record.
 - **Formal ISO/accreditation-style certification.** Everything shipped or planned here uses
   "maps to"/"aligned to" language only (see `no-certification-claims.spec.ts`) — no accredited
   pass/fail mechanism against NIST AI RMF or OWASP exists, and building one is a distinct,
@@ -194,10 +197,12 @@ Capturing the still-open ideas here so they aren't lost — not a commitment to 
 This is a core design tenet, not an implementation detail: **zero network calls, zero LLM
 calls, read-only filesystem access.** Every check runs purely against the in-memory
 `ScanContext` built once per scan; nothing under `src/` makes an HTTP request, shells out, or
-mutates the target repo. The one place output is written to disk is the CLI's `--badge <path>`
-flag, which is an explicit, opt-in write of an SVG string the caller asked for — never touched
-without that flag. The multi-repo runner (`src/multi-repo.ts`) upholds the same guarantee
-explicitly as an exit criterion: no `Date.now()`/random ids/unstable key ordering anywhere in
+mutates the target repo. This guarantee governs scanning/auditing specifically; two CLI
+subcommands are explicit, opt-in exceptions that write outside that path only when invoked: the
+`--badge <path>` flag writes an SVG string the caller asked for, and `harnesslens keygen`
+(`src/keys.ts`) writes an Ed25519 private key to `~/.harnesslens/signing-key.json` (outside the
+target repo, never touched without running that subcommand). The multi-repo runner
+(`src/multi-repo.ts`) upholds the same guarantee explicitly as an exit criterion: no `Date.now()`/random ids/unstable key ordering anywhere in
 that file, so auditing the same set of repo paths twice produces byte-identical JSON output.
 
 ## Why a config-driven registry
