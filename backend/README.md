@@ -127,6 +127,23 @@ registration/revocation, repo visibility toggling, private-tier queries). It is 
 Ed25519 payload signing: the API key authenticates *the account holder*; the Ed25519 signature
 authenticates *an individual submission's verified-tier claim*.
 
+### Evidence endpoint (`GET /submissions/:id/evidence`)
+
+Lets a third party independently re-verify a signed submission's signature, without trusting the
+server's own "signature valid" claim. Returns a field-whitelisted response (never a raw entity):
+`id, repoId, score, level, dimensions, checks, frameworkMapping, commitSha, scannedAt, verified,
+signature, keyId, publicKey` — `publicKey` is the registered signing key looked up by the
+submission's `keyId`, so a caller can reconstruct the canonical payload from the other fields
+(same shape as the "Canonical payload contract" below) and verify `signature` against it locally
+with `crypto.verify`, entirely independent of this server.
+
+Respects the same private-repo visibility model as `GET /repos/:org/:repo`: unauthenticated and
+non-owning callers get an argument-less 404 for a private repo's submission, an unknown submission
+id, and a malformed (non-UUID) submission id — all three are intentionally indistinguishable. The
+owning account (via `Authorization: Bearer <apiKey>`) gets 200. A submission whose signing key was
+later revoked still returns its historical signature/payload/publicKey as originally stored —
+revocation is not retroactive on this read path.
+
 ### Known v1 limitations (not silently hidden)
 
 - **No rate limiting on `POST /accounts`, signing-key, or repo-visibility endpoints** — only
@@ -157,6 +174,12 @@ interface CanonicalSubmissionFields {
   score: number;
   level: { index: number; name: string };
   dimensions: Array<{ id: string; title: string; earned: number; max: number; percent: number }>;
+  /** Optional -- omitted entirely from the canonical string when undefined, so a submitter who
+   * never adopts checks[] produces the exact same byte string as before this field existed. */
+  checks?: Array<{
+    id: string; dimension: string; title: string; points: number; earned: number; passed: boolean;
+    evidence: string;
+  }>;
   frameworkMapping: Record<string, { nistFunctions: string[]; owaspIds: string[] }>;
   commitSha: string;
   scannedAt: string;
@@ -164,9 +187,10 @@ interface CanonicalSubmissionFields {
 ```
 
 `buildCanonicalPayload(fields)` produces a single `JSON.stringify(...)` of an object with exactly
-this key order — `repoId, score, level, dimensions, frameworkMapping, commitSha, scannedAt` — with
-`frameworkMapping`'s own keys sorted alphabetically first. The same logical payload always produces
-a byte-identical canonical string, which is what gets Ed25519-signed:
+this key order — `repoId, score, level, dimensions, checks, frameworkMapping, commitSha,
+scannedAt` (`checks` present only when `fields.checks !== undefined`) — with `frameworkMapping`'s
+own keys sorted alphabetically first. The same logical payload always produces a byte-identical
+canonical string, which is what gets Ed25519-signed:
 
 - **Keys:** exchanged as base64-encoded raw 32-byte Ed25519 public keys (registered via `POST
   /accounts/:accountId/signing-keys`) and base64-encoded raw 64-byte signatures (submitted as

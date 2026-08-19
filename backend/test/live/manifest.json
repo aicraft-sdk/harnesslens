@@ -44,6 +44,16 @@
       "name": "Recovery path: rate-limited submitter receives 429 and can resubmit after the window resets",
       "phase": "Phase 1",
       "script": null
+    },
+    {
+      "name": "Golden path: a verified-tier submission with checks[] evidence can be independently re-verified end to end via GET /submissions/:id/evidence",
+      "phase": "Evidence package",
+      "script": null
+    },
+    {
+      "name": "Negative path: GET /submissions/:id/evidence for a private repo's submission returns 404 to a non-owning/unauthenticated caller, 200 to the owner",
+      "phase": "Evidence package",
+      "script": null
     }
   ],
   "stressScenarios": [
