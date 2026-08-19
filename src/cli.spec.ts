@@ -307,6 +307,44 @@ describe('harnesslens submit --sign', () => {
     expect(stderrLines.join('')).toMatch(/harnesslens keygen/);
   });
 
+  it('exits 1 with an actionable error (never a fake success) when a 2xx response body is not valid JSON', async () => {
+    const { io } = makeIO();
+    await main(['keygen'], io);
+    const { io: submitIo, stdoutLines, stderrLines } = makeIO();
+    const fakeFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => {
+        throw new SyntaxError('Unexpected token in JSON');
+      },
+    });
+
+    const result = await main(
+      ['submit', LEVEL_2_FIXTURE, '--sign', '--repo-id', 'acme/widgets', '--commit-sha', 'a1b2c3d', '--key-id', 'key-1', '--api-url', 'http://x'],
+      submitIo, { fetchImpl: fakeFetch },
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(stderrLines.join('')).toMatch(/could not be parsed as JSON/i);
+    expect(stdoutLines.join('')).not.toContain('Submission accepted');
+  });
+
+  it('exits 1 with an actionable error (never a fake success) when a 2xx response body is valid JSON `null`', async () => {
+    const { io } = makeIO();
+    await main(['keygen'], io);
+    const { io: submitIo, stdoutLines, stderrLines } = makeIO();
+    const fakeFetch = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => null });
+
+    const result = await main(
+      ['submit', LEVEL_2_FIXTURE, '--sign', '--repo-id', 'acme/widgets', '--commit-sha', 'a1b2c3d', '--key-id', 'key-1', '--api-url', 'http://x'],
+      submitIo, { fetchImpl: fakeFetch },
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(stderrLines.join('')).toMatch(/could not be parsed as JSON|unexpected response body/i);
+    expect(stdoutLines.join('')).not.toContain('Submission accepted');
+  });
+
   it('exits 1 when the server rejects the submission (e.g. 400), surfacing the server\'s reason', async () => {
     const { io } = makeIO();
     await main(['keygen'], io);

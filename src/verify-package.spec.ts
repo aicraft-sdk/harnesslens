@@ -66,4 +66,33 @@ describe('verifyPackage', () => {
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('could not parse evidence response');
   });
+
+  it('reports valid: false (never throws) when a 200 OK evidence body has signature/publicKey but is missing required canonical-payload shape (e.g. frameworkMapping)', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      // Malformed shape: signed-looking, but repoId/dimensions/frameworkMapping/commitSha/scannedAt
+      // are all absent -- buildCanonicalPayload would otherwise throw a raw TypeError reconstructing this.
+      json: async () => ({ id: 'sub-1', signature, keyId: 'key-1', publicKey: rawPublicKeyBase64(publicKey), checks: null }),
+    });
+    const result = await verifyPackage('sub-1', 'http://x', fetchImpl as unknown as typeof fetch);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('malformed evidence response');
+  });
+
+  it('reports valid: false (never throws) when publicKey is malformed/non-base64 (createPublicKey throws)', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...fields, id: 'sub-1', verified: true, signature, keyId: 'key-1', publicKey: 'not-a-valid-ed25519-key!!', checks: null }),
+    });
+    const result = await verifyPackage('sub-1', 'http://x', fetchImpl as unknown as typeof fetch);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('malformed evidence response');
+  });
+
+  it('reports valid: false (never throws) when a 200 OK response body is valid JSON `null` (res.json() succeeds, but the body has no properties)', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => null });
+    const result = await verifyPackage('sub-1', 'http://x', fetchImpl as unknown as typeof fetch);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('malformed evidence response');
+  });
 });

@@ -400,12 +400,36 @@ async function runSubmitCommand(args: ParsedArgs, io: CliIO, fetchImpl: typeof f
   }
 
   // Parsed regardless of `response.ok` -- a rejection (e.g. 400) still carries a JSON `message`
-  // field this CLI surfaces to the user. Guarded separately so a non-JSON error body (e.g. an
-  // upstream proxy's HTML error page) can't crash this command with an unhandled parse error.
+  // field this CLI surfaces to the user. A parse failure is handled differently depending on
+  // `response.ok`: on the error path, a non-JSON body (e.g. an upstream proxy's HTML error page)
+  // is tolerated and falls back to `{}` (the status text still gets surfaced below). On the
+  // success path, a parse failure means the server claimed success but returned a body this CLI
+  // cannot trust -- silently defaulting to `{}` there would report `id=undefined
+  // verified=undefined` as if the submission succeeded, so it is treated as a hard error instead.
   let responseBody: { id?: string; verified?: boolean; message?: string };
   try {
     responseBody = (await response.json()) as { id?: string; verified?: boolean; message?: string };
-  } catch {
+  } catch (error) {
+    if (response.ok) {
+      io.stderr(
+        `harnesslens submit: server returned ${response.status} but the response body could not be parsed as JSON — ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      return { exitCode: 1 };
+    }
+    responseBody = {};
+  }
+
+  // `response.json()` only rejects for genuinely invalid JSON syntax -- valid-but-useless JSON
+  // like the literal `null` (or a JSON array/primitive) parses successfully without hitting the
+  // catch above. Guard explicitly before any property access on either branch below, otherwise
+  // `responseBody.id`/`.message` would throw a raw TypeError for a `null` response body.
+  if (responseBody === null || typeof responseBody !== 'object') {
+    if (response.ok) {
+      io.stderr(
+        `harnesslens submit: server returned ${response.status} with an unexpected response body (not a JSON object)\n`,
+      );
+      return { exitCode: 1 };
+    }
     responseBody = {};
   }
 
