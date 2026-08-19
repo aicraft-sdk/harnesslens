@@ -17,7 +17,8 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runAudit } from './api.js';
 import { loadHarnessAuditConfigFile, type HarnessAuditConfig } from './config.js';
-import { generateAndSaveSigningKey } from './keys.js';
+import { buildSignedSubmissionBody } from './evidence-package.js';
+import { generateAndSaveSigningKey, loadSigningKey } from './keys.js';
 import { aiCraftPack } from './packs/ai-craft/index.js';
 import { renderBadge } from './report/badge.js';
 import { renderMarkdown } from './report/markdown.js';
@@ -44,6 +45,7 @@ Usage:
   harnesslens [path] [options]
   harnesslens multi --config <manifest.json> [options]
   harnesslens keygen [--force]
+  harnesslens submit <path> --sign --repo-id <org/repo> --commit-sha <sha> --key-id <uuid> --api-url <url>
 
 Options:
   --root <path>        Repo root to audit (default: positional arg, else cwd)
@@ -53,11 +55,16 @@ Options:
   --min-level <N>        Exit 1 if the maturity level index is below N
   --config <manifest>    (multi only) JSON manifest of { "repos": [{ "id", "path" }] }
   --force               (keygen only) overwrite an existing signing key
+  --sign                 (submit only) required -- sign the submission with the local key
+  --repo-id <org/repo>   (submit only) required
+  --commit-sha <sha>     (submit only) required
+  --key-id <uuid>        (submit only) required -- the keyId returned by signing-key registration
+  --api-url <url>        (submit only) required -- backend base URL, e.g. https://api.example.com
   --help, -h            Show this help and exit
 `;
 
 interface ParsedArgs {
-  subcommand: 'audit' | 'multi' | 'keygen';
+  subcommand: 'audit' | 'multi' | 'keygen' | 'submit';
   root: string;
   json: boolean;
   md: boolean;
@@ -65,6 +72,11 @@ interface ParsedArgs {
   minLevel?: number;
   manifestPath?: string;
   force: boolean;
+  sign: boolean;
+  repoId?: string;
+  commitSha?: string;
+  keyId?: string;
+  apiUrl?: string;
   help: boolean;
 }
 
@@ -79,6 +91,9 @@ function parseArgs(argv: string[]): ParseResult {
   } else if (rest[0] === 'keygen') {
     subcommand = 'keygen';
     rest.shift();
+  } else if (rest[0] === 'submit') {
+    subcommand = 'submit';
+    rest.shift();
   }
 
   let root: string | undefined;
@@ -88,6 +103,11 @@ function parseArgs(argv: string[]): ParseResult {
   let minLevel: number | undefined;
   let manifestPath: string | undefined;
   let force = false;
+  let sign = false;
+  let repoId: string | undefined;
+  let commitSha: string | undefined;
+  let keyId: string | undefined;
+  let apiUrl: string | undefined;
   let help = false;
 
   for (let i = 0; i < rest.length; i += 1) {
@@ -106,6 +126,37 @@ function parseArgs(argv: string[]): ParseResult {
       case '--force':
         force = true;
         break;
+      case '--sign':
+        sign = true;
+        break;
+      case '--repo-id': {
+        const value = rest[i + 1];
+        if (!value) return { error: '--repo-id requires an argument' };
+        repoId = value;
+        i += 1;
+        break;
+      }
+      case '--commit-sha': {
+        const value = rest[i + 1];
+        if (!value) return { error: '--commit-sha requires an argument' };
+        commitSha = value;
+        i += 1;
+        break;
+      }
+      case '--key-id': {
+        const value = rest[i + 1];
+        if (!value) return { error: '--key-id requires an argument' };
+        keyId = value;
+        i += 1;
+        break;
+      }
+      case '--api-url': {
+        const value = rest[i + 1];
+        if (!value) return { error: '--api-url requires an argument' };
+        apiUrl = value;
+        i += 1;
+        break;
+      }
       case '--root': {
         const value = rest[i + 1];
         if (!value) return { error: '--root requires a path argument' };
@@ -153,6 +204,11 @@ function parseArgs(argv: string[]): ParseResult {
       minLevel,
       manifestPath,
       force,
+      sign,
+      repoId,
+      commitSha,
+      keyId,
+      apiUrl,
       help,
     },
   };
@@ -270,8 +326,93 @@ async function runKeygenCommand(io: CliIO, force: boolean): Promise<CliResult> {
   }
 }
 
+/** `harnesslens submit <path> --sign --repo-id <org/repo> --commit-sha <sha> --key-id <uuid>
+ * --api-url <url>` -- runs a scan, builds+signs the evidence package (Task 5.2), and POSTs it to
+ * `<api-url>/submissions`. `--sign` is always required (Durable Decision 9 -- this CLI never adds
+ * an unsigned submission path); `--repo-id`/`--commit-sha` are always explicit flags, never
+ * auto-detected via a `git` shell-out (Durable Decision 11). */
+async function runSubmitCommand(args: ParsedArgs, io: CliIO, fetchImpl: typeof fetch): Promise<CliResult> {
+  if (!args.sign) {
+    io.stderr('harnesslens submit: --sign is required (this CLI only submits signed evidence packages)\n');
+    return { exitCode: 1 };
+  }
+  for (const [field, flag] of [
+    ['repoId', '--repo-id'],
+    ['commitSha', '--commit-sha'],
+    ['keyId', '--key-id'],
+    ['apiUrl', '--api-url'],
+  ] as const) {
+    if (!args[field]) {
+      io.stderr(`harnesslens submit: ${flag} is required\n`);
+      return { exitCode: 1 };
+    }
+  }
+
+  let privateKey: ReturnType<typeof loadSigningKey>['privateKey'];
+  try {
+    ({ privateKey } = loadSigningKey());
+  } catch (error) {
+    io.stderr(`harnesslens submit: ${error instanceof Error ? error.message : String(error)}\n`);
+    return { exitCode: 1 };
+  }
+
+  const root = path.resolve(args.root);
+  let report: Awaited<ReturnType<typeof runAudit>>;
+  try {
+    const fileConfig = loadHarnessAuditConfigFile(root);
+    const config: HarnessAuditConfig = fileConfig ?? { packs: { core: true, 'ai-craft': aiCraftPack } };
+    report = await runAudit({ root, config });
+  } catch (error) {
+    io.stderr(`harnesslens: ${error instanceof Error ? error.message : String(error)}\n`);
+    return { exitCode: 1 };
+  }
+
+  const body = buildSignedSubmissionBody(report, {
+    repoId: args.repoId as string,
+    commitSha: args.commitSha as string,
+    keyId: args.keyId as string,
+    privateKey,
+  });
+
+  let response: Awaited<ReturnType<typeof fetch>>;
+  try {
+    response = await fetchImpl(`${args.apiUrl}/submissions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    io.stderr(`harnesslens submit: request failed — ${error instanceof Error ? error.message : String(error)}\n`);
+    return { exitCode: 1 };
+  }
+
+  // Parsed regardless of `response.ok` -- a rejection (e.g. 400) still carries a JSON `message`
+  // field this CLI surfaces to the user. Guarded separately so a non-JSON error body (e.g. an
+  // upstream proxy's HTML error page) can't crash this command with an unhandled parse error.
+  let responseBody: { id?: string; verified?: boolean; message?: string };
+  try {
+    responseBody = (await response.json()) as { id?: string; verified?: boolean; message?: string };
+  } catch {
+    responseBody = {};
+  }
+
+  if (!response.ok) {
+    io.stderr(
+      `harnesslens submit: server rejected the submission (${response.status}) — ${responseBody.message ?? response.statusText ?? 'unknown error'}\n`,
+    );
+    return { exitCode: 1 };
+  }
+
+  io.stdout(`Submission accepted: id=${responseBody.id} verified=${responseBody.verified}\n`);
+  return { exitCode: 0 };
+}
+
+export interface CliDeps {
+  fetchImpl?: typeof fetch;
+}
+
 /** CLI entry point. Tests call this directly with a fake `io`; the real bin (`isMainModule` guard below) uses `defaultIO`. */
-export async function main(argv: string[], io: CliIO = defaultIO): Promise<CliResult> {
+export async function main(argv: string[], io: CliIO = defaultIO, deps: CliDeps = {}): Promise<CliResult> {
   const parsed = parseArgs(argv);
   if ('error' in parsed) {
     io.stderr(`harnesslens: ${parsed.error}\n\n${HELP}`);
@@ -286,6 +427,9 @@ export async function main(argv: string[], io: CliIO = defaultIO): Promise<CliRe
 
   if (args.subcommand === 'keygen') {
     return runKeygenCommand(io, args.force);
+  }
+  if (args.subcommand === 'submit') {
+    return runSubmitCommand(args, io, deps.fetchImpl ?? fetch);
   }
   return args.subcommand === 'multi' ? runMultiCommand(args, io) : runAuditCommand(args, io);
 }

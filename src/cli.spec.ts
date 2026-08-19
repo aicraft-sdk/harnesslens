@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { main } from './cli.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -252,5 +252,71 @@ describe('harnesslens keygen', () => {
     const result = await main(['keygen'], io2);
     expect(result.exitCode).toBe(1);
     expect(stderrLines.join('')).toMatch(/already exists/i);
+  });
+});
+
+describe('harnesslens submit --sign', () => {
+  let tmpHome: string;
+  const originalHome = process.env.HOME;
+
+  beforeEach(() => {
+    tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'harnesslens-cli-submit-test-'));
+    process.env.HOME = tmpHome;
+  });
+  afterEach(() => {
+    process.env.HOME = originalHome;
+    fs.rmSync(tmpHome, { recursive: true, force: true });
+  });
+
+  it('POSTs the signed body to <api-url>/submissions and prints the returned submission id', async () => {
+    const { io } = makeIO();
+    await main(['keygen'], io);
+    const { io: submitIo, stdoutLines } = makeIO();
+    const fakeFetch = vi.fn().mockResolvedValue({ ok: true, status: 201, json: async () => ({ id: 'sub-1', verified: true }) });
+
+    const result = await main(
+      ['submit', LEVEL_2_FIXTURE, '--sign', '--repo-id', 'acme/widgets', '--commit-sha', 'a1b2c3d', '--key-id', 'key-1', '--api-url', 'http://localhost:3000'],
+      submitIo, { fetchImpl: fakeFetch },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(fakeFetch).toHaveBeenCalledWith('http://localhost:3000/submissions', expect.objectContaining({ method: 'POST' }));
+    expect(stdoutLines.join('')).toContain('sub-1');
+  });
+
+  it('exits 1 with an actionable error when --sign is omitted (Durable Decision 9)', async () => {
+    const { io, stderrLines } = makeIO();
+
+    const result = await main(['submit', LEVEL_2_FIXTURE, '--repo-id', 'acme/widgets', '--commit-sha', 'a1b2c3d'], io);
+
+    expect(result.exitCode).toBe(1);
+    expect(stderrLines.join('')).toMatch(/--sign/);
+  });
+
+  it('exits 1 with an actionable error when no local signing key exists', async () => {
+    const { io, stderrLines } = makeIO();
+
+    const result = await main(
+      ['submit', LEVEL_2_FIXTURE, '--sign', '--repo-id', 'acme/widgets', '--commit-sha', 'a1b2c3d', '--key-id', 'key-1', '--api-url', 'http://x'],
+      io,
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(stderrLines.join('')).toMatch(/harnesslens keygen/);
+  });
+
+  it('exits 1 when the server rejects the submission (e.g. 400), surfacing the server\'s reason', async () => {
+    const { io } = makeIO();
+    await main(['keygen'], io);
+    const { io: submitIo, stderrLines } = makeIO();
+    const fakeFetch = vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ message: 'invalid signature' }) });
+
+    const result = await main(
+      ['submit', LEVEL_2_FIXTURE, '--sign', '--repo-id', 'acme/widgets', '--commit-sha', 'a1b2c3d', '--key-id', 'key-1', '--api-url', 'http://x'],
+      submitIo, { fetchImpl: fakeFetch },
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(stderrLines.join('')).toContain('invalid signature');
   });
 });
