@@ -1,4 +1,4 @@
-import { generateKeyPairSync, sign } from 'node:crypto';
+import { generateKeyPairSync, sign, type KeyObject } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildCanonicalPayload, type CanonicalSubmissionFields } from './canonical-payload.js';
 import { verifyEd25519Raw } from './ed25519.js';
@@ -18,7 +18,7 @@ const fields: CanonicalSubmissionFields = {
   scannedAt: '2026-08-13T00:00:00.000Z',
 };
 
-function rawPublicKeyBase64FromJwk(publicKey: ReturnType<typeof generateKeyPairSync<'ed25519'>>['publicKey']): string {
+function rawPublicKeyBase64FromJwk(publicKey: KeyObject): string {
   const jwk = publicKey.export({ format: 'jwk' }) as { x: string };
   return Buffer.from(jwk.x, 'base64url').toString('base64');
 }
