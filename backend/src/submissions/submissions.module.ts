@@ -9,10 +9,11 @@ import { RejectedSubmission } from './entities/rejected-submission.entity';
 import { SubmissionsController } from './submissions.controller';
 import { SubmissionsService } from './submissions.service';
 import { SubmissionRejectionFilter } from './submission-rejection.filter';
+import { SubmissionEvidenceService } from './submission-evidence.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Account, Repo, Submission, RejectedSubmission, SigningKey])],
   controllers: [SubmissionsController],
-  providers: [SubmissionsService, ReposService, SubmissionRejectionFilter],
+  providers: [SubmissionsService, ReposService, SubmissionRejectionFilter, SubmissionEvidenceService],
 })
 export class SubmissionsModule {}

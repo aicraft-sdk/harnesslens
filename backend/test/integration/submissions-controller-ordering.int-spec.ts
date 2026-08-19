@@ -12,7 +12,12 @@ import { AddChecksToSubmissions1787126020558 } from '../../src/migrations/178712
 import { ReposService } from '../../src/repos/repos.service';
 import { SubmissionsService } from '../../src/submissions/submissions.service';
 import { SubmissionsController } from '../../src/submissions/submissions.controller';
+import type { SubmissionEvidenceService } from '../../src/submissions/submission-evidence.service';
 import type { CreateSubmissionDto } from '../../src/submissions/dto/create-submission.dto';
+
+// This spec only exercises controller.create() -- the evidence service is never called on that
+// path, so a stub satisfies the constructor without wiring a real SubmissionEvidenceService.
+const evidenceServiceStub = {} as unknown as SubmissionEvidenceService;
 
 const validDto = {
   repoId: 'acme/no-orphan-widgets',
@@ -48,6 +53,7 @@ describe('SubmissionsController.create -- validation runs before repo auto-provi
       reposService,
       new SubmissionsService(ds.getRepository(SigningKey), accountsRepo, reposRepo),
       ds.getRepository(Submission),
+      evidenceServiceStub,
     );
   }, 60_000);
 

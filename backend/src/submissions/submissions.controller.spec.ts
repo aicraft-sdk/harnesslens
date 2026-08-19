@@ -1,14 +1,19 @@
 import { describe, it, expect, vi } from 'vitest';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 import { SubmissionsController } from './submissions.controller';
 import { SubmissionsService } from './submissions.service';
+import type { SubmissionEvidenceService } from './submission-evidence.service';
 import type { CreateSubmissionDto } from './dto/create-submission.dto';
 import type { Submission } from './entities/submission.entity';
 import type { ReposService } from '../repos/repos.service';
 import type { Repo } from '../repos/entities/repo.entity';
 import type { Account } from '../accounts/entities/account.entity';
 import type { SigningKey } from '../signing-keys/entities/signing-key.entity';
+
+// Unused by SubmissionsController.create -- only satisfies the constructor's 4th dependency for
+// tests that exercise the create() path.
+const evidenceServiceStub = { getEvidence: vi.fn() } as unknown as SubmissionEvidenceService;
 
 // These DTOs never set `keyId`, so the signing-key/accounts/repos repositories are never
 // consulted -- stubbed only to satisfy SubmissionsService's constructor dependencies.
@@ -48,6 +53,7 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
       reposServiceStub,
       new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub),
       submissionsRepoStub,
+      evidenceServiceStub,
     );
 
     await expect(controller.create(dangerousDto)).rejects.toBeInstanceOf(BadRequestException);
@@ -69,10 +75,40 @@ describe('SubmissionsController.create -- service-layer rejection wiring', () =>
       reposServiceStub,
       new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub),
       submissionsRepoStub,
+      evidenceServiceStub,
     );
 
     await expect(controller.create(dangerousDto)).rejects.toBeInstanceOf(BadRequestException);
 
     expect(findOrCreateSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('SubmissionsController.getEvidence', () => {
+  it('throws NotFoundException when SubmissionEvidenceService returns null', async () => {
+    const reposServiceStub = {} as unknown as ReposService;
+    const submissionsRepoStub = {} as unknown as Repository<Submission>;
+    const evidenceService = { getEvidence: vi.fn().mockResolvedValue(null) } as unknown as SubmissionEvidenceService;
+    const controller = new SubmissionsController(
+      reposServiceStub,
+      new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub),
+      submissionsRepoStub,
+      evidenceService,
+    );
+    await expect(controller.getEvidence('sub-1', {})).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns the service result as-is when found', async () => {
+    const reposServiceStub = {} as unknown as ReposService;
+    const submissionsRepoStub = {} as unknown as Repository<Submission>;
+    const evidence = { id: 'sub-1', repoId: 'acme/widgets' /* ...rest omitted for brevity */ };
+    const evidenceService = { getEvidence: vi.fn().mockResolvedValue(evidence) } as unknown as SubmissionEvidenceService;
+    const controller = new SubmissionsController(
+      reposServiceStub,
+      new SubmissionsService(signingKeysRepoStub, accountsRepoStub, reposRepoStub),
+      submissionsRepoStub,
+      evidenceService,
+    );
+    await expect(controller.getEvidence('sub-1', {})).resolves.toBe(evidence);
   });
 });
