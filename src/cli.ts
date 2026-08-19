@@ -423,7 +423,10 @@ async function runSubmitCommand(args: ParsedArgs, io: CliIO, fetchImpl: typeof f
   // like the literal `null` (or a JSON array/primitive) parses successfully without hitting the
   // catch above. Guard explicitly before any property access on either branch below, otherwise
   // `responseBody.id`/`.message` would throw a raw TypeError for a `null` response body.
-  if (responseBody === null || typeof responseBody !== 'object') {
+  // `typeof x === 'object'` is also true for arrays, so `Array.isArray` must be checked
+  // separately -- otherwise a JSON-array 2xx body slips past this guard and reaches the success
+  // branch below with `id=undefined verified=undefined`, a silent fake success.
+  if (responseBody === null || typeof responseBody !== 'object' || Array.isArray(responseBody)) {
     if (response.ok) {
       io.stderr(
         `harnesslens submit: server returned ${response.status} with an unexpected response body (not a JSON object)\n`,

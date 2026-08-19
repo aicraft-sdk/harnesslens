@@ -95,4 +95,11 @@ describe('verifyPackage', () => {
     expect(result.valid).toBe(false);
     expect(result.reason).toBe('malformed evidence response');
   });
+
+  it('reports valid: false (never throws) when a 200 OK response body is a JSON array', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    const result = await verifyPackage('sub-1', 'http://x', fetchImpl as unknown as typeof fetch);
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe('malformed evidence response');
+  });
 });

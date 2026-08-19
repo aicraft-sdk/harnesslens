@@ -48,7 +48,10 @@ export async function verifyPackage(
   // literal `null` (or a JSON array/primitive) parses successfully, so it doesn't hit the catch
   // above. Guard explicitly before any property access, otherwise `body.signature` below would
   // throw a raw TypeError for a 200 OK response whose body is just `null`.
-  if (body === null || typeof body !== 'object') {
+  // `typeof x === 'object'` is also true for arrays, so `Array.isArray` must be checked
+  // separately -- otherwise an array body silently falls through to the "unsigned" reason below
+  // instead of being reported as malformed.
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
     return { valid: false, reason: 'malformed evidence response' };
   }
   if (!body.signature || !body.publicKey) {
